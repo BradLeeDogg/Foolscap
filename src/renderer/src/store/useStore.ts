@@ -3,6 +3,7 @@ import type { BinderItem, ProjectMeta } from '@shared/types'
 import type { LabelDef, OpenProjectResult } from '@shared/api'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+export type FolderView = 'scrivenings' | 'corkboard' | 'outliner'
 
 interface AppState {
   meta: ProjectMeta | null
@@ -21,6 +22,8 @@ interface AppState {
   composition: boolean
   /** Total project words when the project was opened (session baseline). */
   sessionStartWords: number
+  /** How a selected folder is presented. */
+  folderView: FolderView
 
   openResult: (result: OpenProjectResult) => void
   closeProject: () => void
@@ -34,6 +37,9 @@ interface AppState {
   setComposition: (on: boolean) => void
   /** Update one item's cached word count (after a save) so totals stay live. */
   setItemWordCount: (id: string, n: number) => void
+  setFolderView: (view: FolderView) => void
+  /** Optimistically patch a binder item in the local tree (synopsis/label/etc). */
+  patchItem: (id: string, patch: Partial<BinderItem>) => void
 }
 
 /** Sum of cached word counts across all documents. */
@@ -71,6 +77,7 @@ export const useStore = create<AppState>((set) => ({
   splitId: null,
   composition: false,
   sessionStartWords: 0,
+  folderView: 'scrivenings',
 
   openResult: (result) =>
     set({
@@ -84,7 +91,8 @@ export const useStore = create<AppState>((set) => ({
       selectionWordCount: 0,
       splitId: null,
       composition: false,
-      sessionStartWords: totalWords(result.tree)
+      sessionStartWords: totalWords(result.tree),
+      folderView: 'scrivenings'
     }),
   closeProject: () =>
     set({
@@ -111,5 +119,8 @@ export const useStore = create<AppState>((set) => ({
   setItemWordCount: (id, n) =>
     set((s) => ({
       tree: s.tree.map((it) => (it.id === id ? { ...it, wordCount: n } : it))
-    }))
+    })),
+  setFolderView: (view) => set({ folderView: view }),
+  patchItem: (id, patch) =>
+    set((s) => ({ tree: s.tree.map((it) => (it.id === id ? { ...it, ...patch } : it)) }))
 }))

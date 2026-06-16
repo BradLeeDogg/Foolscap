@@ -34,6 +34,26 @@ export function flattenVisible(items: BinderItem[]): FlatNode[] {
   return out
 }
 
+/** Direct children of a parent, in position order (for the corkboard). */
+export function childrenOf(items: BinderItem[], parentId: string | null): BinderItem[] {
+  return items.filter((i) => i.parentId === parentId).sort((a, b) => a.position - b.position)
+}
+
+/** All descendants of a folder, depth-first, with depth relative to it (outliner). */
+export function subtreeFlat(items: BinderItem[], rootId: string): FlatNode[] {
+  const byParent = groupByParent(items)
+  const out: FlatNode[] = []
+  const walk = (parentId: string, depth: number): void => {
+    for (const child of byParent.get(parentId) ?? []) {
+      const kids = byParent.get(child.id) ?? []
+      out.push({ ...child, depth, childCount: kids.length })
+      walk(child.id, depth + 1)
+    }
+  }
+  walk(rootId, 0)
+  return out
+}
+
 /** Every document in the project, in reading (binder) order. */
 export function allDocuments(items: BinderItem[]): BinderItem[] {
   const byParent = groupByParent(items)

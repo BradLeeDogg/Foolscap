@@ -90,23 +90,24 @@ app.whenReady().then(() => {
           )} }).then((r) => {
             window.__wpOpenResult(r);
             const S = window.__wpStore;
-            setTimeout(() => {
-              const st = S.getState();
-              const folder = st.tree.find((t) => t.type === 'folder');
-              if (folder) st.select(folder.id);
-              const doc = st.tree.find((t) => t.type === 'document');
-              if (doc) st.setSplit(doc.id);
-              setTimeout(() => {
-                S.getState().setComposition(true);
-                setTimeout(() => S.getState().setComposition(false), 500);
-              }, 500);
-            }, 500);
+            const step = (fn, ms) => new Promise((res) => setTimeout(() => { fn(); res(); }, ms));
+            (async () => {
+              const folder = S.getState().tree.find((t) => t.type === 'folder');
+              if (folder) S.getState().select(folder.id);
+              await step(() => S.getState().setFolderView('corkboard'), 450);
+              await step(() => S.getState().setFolderView('outliner'), 450);
+              await step(() => S.getState().setFolderView('scrivenings'), 450);
+              const doc = S.getState().tree.find((t) => t.type === 'document');
+              if (doc) S.getState().setSplit(doc.id);
+              await step(() => S.getState().setComposition(true), 450);
+              await step(() => S.getState().setComposition(false), 450);
+            })();
           })`
         )
         setTimeout(() => {
-          console.log('WP_SMOKE_WORKSPACE_OK: workspace, scrivenings, split & composition mounted')
+          console.log('WP_SMOKE_WORKSPACE_OK: workspace, corkboard, outliner, split & composition mounted')
           app.quit()
-        }, 3000)
+        }, 3600)
       } catch (err) {
         console.error('WP_SMOKE_DRIVE_FAILED:', err)
         app.quit()

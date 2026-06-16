@@ -75,8 +75,9 @@ MyNovel.writeproject/
 - Note: composition covers the active monitor; multi-monitor blackout deferred.
 
 ### M3 — Phase 3: Planning & organization
-- [ ] Corkboard (synopsis cards; drag reorders binder; color-coded status)
-- [ ] Outliner (TanStack Table: title/synopsis/word count/label/status/custom fields; inline edit; reorder)
+- [x] Corkboard (synopsis cards; drag reorders binder; color-coded status)
+- [x] Outliner (TanStack Table: title/synopsis/word count/label/status; inline edit; reorder)
+- [x] Folder view switch (Stitched / Corkboard / Outline)
 - [ ] Full-text search across project
 - [ ] Saved collections (dynamic, search/metadata-driven, cross-binder)
 

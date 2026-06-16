@@ -765,6 +765,175 @@ button.on {
   color: var(--accent);
 }
 
+/* --- folder views (scrivenings / corkboard / outliner) ----- */
+.folder-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.view-switch {
+  display: flex;
+  gap: 2px;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+.view-switch button {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.7rem;
+  color: var(--ink-soft);
+}
+.view-switch button.on {
+  background: var(--selected);
+  color: var(--ink);
+}
+.folder-view-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* corkboard */
+.corkboard {
+  height: 100%;
+  overflow: auto;
+  background: var(--canvas);
+  padding: 1rem;
+}
+.corkboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--rule-strong);
+  border-radius: 8px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  box-shadow: var(--shadow);
+  min-height: 150px;
+}
+.card-grab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: grab;
+}
+.card-icon {
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
+.card-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-title:hover {
+  text-decoration: underline;
+}
+.card-label-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.card-synopsis {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.35rem;
+  font: inherit;
+  font-size: 0.82rem;
+  background: #fffefb;
+  min-height: 64px;
+}
+.card-footer {
+  display: flex;
+  gap: 0.3rem;
+}
+.card-footer select {
+  flex: 1;
+  font-size: 0.72rem;
+  padding: 0.15rem;
+}
+
+/* outliner */
+.outliner {
+  height: 100%;
+  overflow: auto;
+  background: var(--card);
+}
+.ol-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.ol-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--rule-strong);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+}
+.ol-table td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0;
+}
+.ol-handle-col {
+  width: 1.6rem;
+}
+.ol-handle {
+  text-align: center;
+  color: var(--ink-faint);
+  cursor: grab;
+  user-select: none;
+}
+.ol-title input,
+.ol-synopsis input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+}
+.ol-title input:focus,
+.ol-synopsis input:focus {
+  background: #fffef9;
+  outline: 1px solid var(--accent);
+}
+.ol-wordCount {
+  padding: 0.4rem 0.5rem;
+  text-align: right;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ol-select {
+  border: none;
+  background: transparent;
+  padding: 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  width: 100%;
+}
+.ol-label,
+.ol-status {
+  width: 8rem;
+}
+
 /* --- snapshots drawer -------------------------------------- */
 .drawer {
   height: 100%;

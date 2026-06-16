@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import DocumentEditor from './DocumentEditor'
-import Scrivenings from './Scrivenings'
+import FolderView from './FolderView'
 
 /** Chooses what to show for the current binder selection. */
 export default function Editor(): JSX.Element {
@@ -17,7 +17,7 @@ export default function Editor(): JSX.Element {
     )
   }
   if (selected.type === 'folder') {
-    return <Scrivenings folderId={selected.id} />
+    return <FolderView folderId={selected.id} />
   }
   return <DocumentEditor key={selected.id} docId={selected.id} active />
 }
