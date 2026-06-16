@@ -97,6 +97,37 @@ function migrate(db: DB): void {
     `)
     db.pragma('user_version = 3')
   }
+  if (current < 4) {
+    db.exec(`
+      CREATE TABLE sources (
+        id         TEXT PRIMARY KEY,
+        kind       TEXT NOT NULL,           -- 'web' | 'pdf' | 'image' | 'transcript' | 'note' | 'url'
+        title      TEXT NOT NULL,
+        url        TEXT,
+        locator    TEXT,                     -- transcript timestamp, page no., etc.
+        file_path  TEXT,                     -- relative path under research/ or assets/
+        notes      TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE claims (
+        id                TEXT PRIMARY KEY,
+        doc_id            TEXT NOT NULL,
+        text              TEXT NOT NULL,
+        status            TEXT NOT NULL DEFAULT 'needs-sourcing',
+        needs_quote_check INTEGER NOT NULL DEFAULT 0,
+        created_at        INTEGER NOT NULL
+      );
+      CREATE INDEX idx_claims_doc ON claims(doc_id);
+
+      CREATE TABLE claim_sources (
+        claim_id  TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        PRIMARY KEY (claim_id, source_id)
+      );
+    `)
+    db.pragma('user_version = 4')
+  }
 }
 
 // --- meta key/value helpers -------------------------------------------------

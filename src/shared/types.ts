@@ -132,6 +132,40 @@ export interface Collection {
   createdAt: number
 }
 
+export type SourceKind = 'web' | 'pdf' | 'image' | 'transcript' | 'note' | 'url'
+
+/** A stored, citeable source: a captured page, a file asset, a transcript, etc. */
+export interface Source {
+  id: string
+  kind: SourceKind
+  title: string
+  url: string | null
+  /** Transcript timestamp, page number, or other locator. */
+  locator: string | null
+  /** Relative path under the project (research/ or assets/), if a file is stored. */
+  filePath: string | null
+  notes: string
+  createdAt: number
+}
+
+export type ClaimStatus = 'verified' | 'needs-sourcing' | 'disputed'
+
+/** A factual assertion in a document, tracked for fact-checking. */
+export interface Claim {
+  id: string
+  docId: string
+  text: string
+  status: ClaimStatus
+  /** A quotation still to be checked against its audio. */
+  needsQuoteCheck: boolean
+  createdAt: number
+}
+
+/** A claim with its linked sources resolved (for the packet/UI). */
+export interface ClaimWithSources extends Claim {
+  sources: Source[]
+}
+
 export type MetaFieldType = 'text' | 'select' | 'number'
 
 /** A user-definable, project-level metadata field (e.g. POV, Setting). */

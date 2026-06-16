@@ -95,10 +95,11 @@ app.whenReady().then(() => {
               const folder = S.getState().tree.find((t) => t.type === 'folder');
               if (folder) S.getState().select(folder.id);
               await step(() => {
+                const open = ['Find', 'Inspector', 'Sources', 'Fact-check'];
                 document.querySelectorAll('button').forEach((b) => {
-                  if (b.textContent === 'Find' || b.textContent === 'Inspector') b.click();
+                  if (open.includes(b.textContent || '')) b.click();
                 });
-              }, 450);
+              }, 600);
               await step(() => S.getState().setFolderView('corkboard'), 450);
               await step(() => S.getState().setFolderView('outliner'), 450);
               await step(() => S.getState().setFolderView('scrivenings'), 450);

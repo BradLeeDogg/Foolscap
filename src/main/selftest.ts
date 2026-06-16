@@ -10,6 +10,8 @@ import { createSnapshot, listSnapshots, restoreSnapshot } from './services/snaps
 import { createBackup } from './services/backups'
 import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
+import { createSource, extractReadable, listSources } from './services/sources'
+import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
 import type { DocumentContent } from '@shared/types'
 
 function assert(cond: unknown, msg: string): void {
@@ -95,6 +97,30 @@ export async function runSelfTest(): Promise<void> {
   assert(
     listBinder(db).find((i) => i.id === doc.id)!.notes === 'check quote against tape',
     'item notes persist'
+  )
+
+  const sample =
+    '<!doctype html><html><head><title>Test Article</title></head><body><article>' +
+    '<h1>Test Article</h1>' +
+    '<p>The mayor said the budget would grow by ten percent next year, according to public records.</p>' +
+    '<p>Officials confirmed the figure during a meeting on Tuesday evening at city hall downtown.</p>' +
+    '</article><script>alert("xss")</script></body></html>'
+  const readable = extractReadable(sample, 'https://example.com/a')
+  assert(
+    readable.contentHtml.includes('mayor') && !readable.contentHtml.includes('<script'),
+    'readability extracts prose and strips scripts'
+  )
+
+  const src = createSource(db, { kind: 'note', title: 'Mayor budget note' })
+  assert(listSources(db).some((s) => s.id === src.id), 'source created')
+  const claim = createClaim(db, doc.id, 'Budget grows 10% next year')
+  assert(listClaims(db, doc.id).length === 1, 'claim logged')
+  linkSource(db, claim.id, src.id)
+  assert(listClaims(db, doc.id)[0]!.sources.length === 1, 'source linked to claim')
+  updateClaim(db, claim.id, { status: 'verified' })
+  assert(
+    listOutstanding(db).every((c) => c.id !== claim.id),
+    'verified + sourced claim leaves the outstanding list'
   )
 
   removeItem(db, created.id)

@@ -9,6 +9,8 @@ import SnapshotsPanel from './SnapshotsPanel'
 import TargetsPanel from './TargetsPanel'
 import FindPanel from './FindPanel'
 import Inspector from './Inspector'
+import SourcesPanel from './SourcesPanel'
+import FactCheckPanel from './FactCheckPanel'
 import CompositionMode from './CompositionMode'
 
 function saveLabel(state: string, at: number | null): string {
@@ -42,6 +44,9 @@ export default function Workspace(): JSX.Element {
   const [showTargets, setShowTargets] = useState(false)
   const [showFind, setShowFind] = useState(false)
   const [showInspector, setShowInspector] = useState(false)
+  const [showSources, setShowSources] = useState(false)
+  // Journalism types open the fact-check packet by default.
+  const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
 
   const handleClose = async (): Promise<void> => {
@@ -96,6 +101,12 @@ export default function Workspace(): JSX.Element {
           <button className={showInspector ? 'on' : ''} onClick={() => setShowInspector((v) => !v)}>
             Inspector
           </button>
+          <button className={showSources ? 'on' : ''} onClick={() => setShowSources((v) => !v)}>
+            Sources
+          </button>
+          <button className={showFactCheck ? 'on' : ''} onClick={() => setShowFactCheck((v) => !v)}>
+            Fact-check
+          </button>
           <button className={showTargets ? 'on' : ''} onClick={() => setShowTargets((v) => !v)}>
             Targets
           </button>
@@ -149,10 +160,26 @@ export default function Workspace(): JSX.Element {
               </Panel>
             </>
           )}
+          {showSources && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="sources" order={7} defaultSize={26} minSize={18} maxSize={44} className="pane">
+                <SourcesPanel onClose={() => setShowSources(false)} />
+              </Panel>
+            </>
+          )}
+          {showFactCheck && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="factcheck" order={8} defaultSize={28} minSize={20} maxSize={46} className="pane">
+                <FactCheckPanel onClose={() => setShowFactCheck(false)} />
+              </Panel>
+            </>
+          )}
           {showSnapshots && (
             <>
               <PanelResizeHandle className="resize-handle" />
-              <Panel id="snapshots" order={7} defaultSize={24} minSize={16} maxSize={40} className="pane">
+              <Panel id="snapshots" order={9} defaultSize={24} minSize={16} maxSize={40} className="pane">
                 <SnapshotsPanel onClose={() => setShowSnapshots(false)} />
               </Panel>
             </>

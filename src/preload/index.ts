@@ -67,6 +67,24 @@ const api: WProcessorAPI = {
     getValues: (itemId) => ipcRenderer.invoke('metadata:getValues', itemId),
     setValue: (itemId, fieldId, value) =>
       ipcRenderer.invoke('metadata:setValue', itemId, fieldId, value)
+  },
+  source: {
+    list: () => ipcRenderer.invoke('source:list'),
+    capture: (url) => ipcRenderer.invoke('source:capture', url),
+    createManual: (input) => ipcRenderer.invoke('source:createManual', input),
+    importFile: () => ipcRenderer.invoke('source:importFile'),
+    remove: (id) => ipcRenderer.invoke('source:remove', id)
+  },
+  factcheck: {
+    listClaims: (docId) => ipcRenderer.invoke('factcheck:listClaims', docId),
+    createClaim: (docId, text) => ipcRenderer.invoke('factcheck:createClaim', docId, text),
+    updateClaim: (id, patch) => ipcRenderer.invoke('factcheck:updateClaim', id, patch),
+    removeClaim: (id) => ipcRenderer.invoke('factcheck:removeClaim', id),
+    linkSource: (claimId, sourceId) =>
+      ipcRenderer.invoke('factcheck:linkSource', claimId, sourceId),
+    unlinkSource: (claimId, sourceId) =>
+      ipcRenderer.invoke('factcheck:unlinkSource', claimId, sourceId),
+    outstanding: () => ipcRenderer.invoke('factcheck:outstanding')
   }
 }
 

@@ -2,6 +2,8 @@ import type {
   BinderItem,
   BinderItemType,
   BackupInfo,
+  ClaimStatus,
+  ClaimWithSources,
   Collection,
   CollectionCriteria,
   DocumentContent,
@@ -13,8 +15,20 @@ import type {
   ProjectType,
   RecentProject,
   SearchResult,
-  Snapshot
+  Snapshot,
+  Source,
+  SourceKind
 } from './types'
+
+export interface ManualSourceInput {
+  kind: SourceKind
+  title: string
+  url?: string | null
+  locator?: string | null
+  notes?: string
+}
+
+export type ClaimPatch = { text?: string; status?: ClaimStatus; needsQuoteCheck?: boolean }
 
 export interface CreateProjectOptions {
   title: string
@@ -122,5 +136,22 @@ export interface WProcessorAPI {
     removeField(id: string): Promise<MetaField[]>
     getValues(itemId: string): Promise<MetaValues>
     setValue(itemId: string, fieldId: string, value: string): Promise<void>
+  }
+  source: {
+    list(): Promise<Source[]>
+    capture(url: string): Promise<Source>
+    createManual(input: ManualSourceInput): Promise<Source>
+    /** Opens a file picker; returns the new source, or null if cancelled. */
+    importFile(): Promise<Source | null>
+    remove(id: string): Promise<Source[]>
+  }
+  factcheck: {
+    listClaims(docId: string): Promise<ClaimWithSources[]>
+    createClaim(docId: string, text: string): Promise<ClaimWithSources>
+    updateClaim(id: string, patch: ClaimPatch): Promise<void>
+    removeClaim(id: string): Promise<void>
+    linkSource(claimId: string, sourceId: string): Promise<void>
+    unlinkSource(claimId: string, sourceId: string): Promise<void>
+    outstanding(): Promise<ClaimWithSources[]>
   }
 }

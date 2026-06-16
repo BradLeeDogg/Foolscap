@@ -16,7 +16,24 @@ import { getRecents, removeRecent } from '../services/recents'
 import { searchProject } from '../services/search'
 import { createCollection, listCollections, removeCollection } from '../services/collections'
 import * as metadata from '../services/metadata'
-import type { CollectionCriteria, MetaField, MetaFieldType } from '@shared/types'
+import * as sources from '../services/sources'
+import * as factcheck from '../services/factcheck'
+import { extname } from 'path'
+import type {
+  ClaimStatus,
+  CollectionCriteria,
+  MetaField,
+  MetaFieldType,
+  SourceKind
+} from '@shared/types'
+import type { ManualSourceInput } from '@shared/api'
+
+function kindFromExt(file: string): SourceKind {
+  const ext = extname(file).toLowerCase()
+  if (ext === '.pdf') return 'pdf'
+  if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) return 'image'
+  return 'pdf'
+}
 
 function focusedWindow(): BrowserWindow | undefined {
   return BrowserWindow.getFocusedWindow() ?? undefined
@@ -228,5 +245,71 @@ export function registerIpc(): void {
   ipcMain.handle('metadata:setValue', (_e, itemId: string, fieldId: string, value: string) => {
     const { db } = projectService.requireCurrent()
     metadata.setValue(db, itemId, fieldId, value)
+  })
+
+  // --- sources & research ---------------------------------------------------
+  ipcMain.handle('source:list', () => {
+    const { db } = projectService.requireCurrent()
+    return sources.listSources(db)
+  })
+  ipcMain.handle('source:capture', (_e, url: string) => {
+    const { db, paths } = projectService.requireCurrent()
+    return sources.captureUrl(db, paths.root, url)
+  })
+  ipcMain.handle('source:createManual', (_e, input: ManualSourceInput) => {
+    const { db } = projectService.requireCurrent()
+    return sources.createSource(db, input)
+  })
+  ipcMain.handle('source:importFile', async () => {
+    const { db, paths } = projectService.requireCurrent()
+    const res = await dialog.showOpenDialog(focusedWindow()!, {
+      title: 'Import a source file',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Documents & Images', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (res.canceled || !res.filePaths[0]) return null
+    const file = res.filePaths[0]
+    const title = file.split(/[\\/]/).pop() ?? 'Asset'
+    return sources.importFile(db, paths.root, file, kindFromExt(file), title)
+  })
+  ipcMain.handle('source:remove', (_e, id: string) => {
+    const { db, paths } = projectService.requireCurrent()
+    return sources.removeSource(db, paths.root, id)
+  })
+
+  // --- fact-check packet ----------------------------------------------------
+  ipcMain.handle('factcheck:listClaims', (_e, docId: string) => {
+    const { db } = projectService.requireCurrent()
+    return factcheck.listClaims(db, docId)
+  })
+  ipcMain.handle('factcheck:createClaim', (_e, docId: string, text: string) => {
+    const { db } = projectService.requireCurrent()
+    return factcheck.createClaim(db, docId, text)
+  })
+  ipcMain.handle(
+    'factcheck:updateClaim',
+    (_e, id: string, patch: { text?: string; status?: ClaimStatus; needsQuoteCheck?: boolean }) => {
+      const { db } = projectService.requireCurrent()
+      factcheck.updateClaim(db, id, patch)
+    }
+  )
+  ipcMain.handle('factcheck:removeClaim', (_e, id: string) => {
+    const { db } = projectService.requireCurrent()
+    factcheck.removeClaim(db, id)
+  })
+  ipcMain.handle('factcheck:linkSource', (_e, claimId: string, sourceId: string) => {
+    const { db } = projectService.requireCurrent()
+    factcheck.linkSource(db, claimId, sourceId)
+  })
+  ipcMain.handle('factcheck:unlinkSource', (_e, claimId: string, sourceId: string) => {
+    const { db } = projectService.requireCurrent()
+    factcheck.unlinkSource(db, claimId, sourceId)
+  })
+  ipcMain.handle('factcheck:outstanding', () => {
+    const { db } = projectService.requireCurrent()
+    return factcheck.listOutstanding(db)
   })
 }

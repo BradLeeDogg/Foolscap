@@ -81,12 +81,13 @@ MyNovel.writeproject/
 - [x] Full-text search across project (label/status filters; on-demand scan)
 - [x] Saved collections (dynamic, criteria-driven, cross-binder) — schema v2
 
-### M4 — Phase 4: Metadata, research & journalism workflow
+### M4 — Phase 4: Metadata, research & journalism workflow  ✅ (apparatus deferred)
 - [x] Inspector (synopsis, notes, label/status, custom metadata: POV/setting/characters) — schema v3
 - [x] User-definable custom fields (text/number/select; seeded for fiction + features)
-- [ ] Research capture (Readability + sanitize), PDFs/images/bios as assets
-- [ ] Source linking + tracking; auto-generated Notes/References/Bibliography (toggle)
-- [ ] Fact-check packet (claims tied to sources; verified/needs-sourcing/disputed; unsourced list; quote-vs-audio flags; export)
+- [x] Research capture (Readability + sanitize), PDFs/images as assets — schema v4
+- [x] Source linking (claims ↔ sources). Auto-generated Notes/References/Bibliography — DEFERRED by agreement
+- [x] Fact-check packet (claims tied to sources; verified/needs-sourcing/disputed; outstanding list; quote-vs-audio flags)
+- [ ] Export the fact-check packet alongside the manuscript → with Compile (M5)
 
 ### M5 — Phase 5: Compile, Export & Import
 - [ ] Compile tool (assemble in binder order; apply layout; non-destructive)
