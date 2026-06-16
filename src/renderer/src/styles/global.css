@@ -765,6 +765,98 @@ button.on {
   color: var(--accent);
 }
 
+/* --- modal / compile dialog -------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(20, 18, 14, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  background: var(--paper);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: min(760px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-head,
+.modal-foot {
+  display: flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+}
+.modal-head {
+  border-bottom: 1px solid var(--rule);
+  justify-content: space-between;
+}
+.modal-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.modal-foot {
+  border-top: 1px solid var(--rule);
+  gap: 0.5rem;
+}
+.compile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: auto;
+}
+.compile-grid h4 {
+  margin: 0.6rem 0 0.35rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.compile-grid section > select {
+  width: 100%;
+}
+.compile-count {
+  font-size: 0.78rem;
+  margin: 0.3rem 0 0;
+}
+.compile-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.compile-fields label,
+.compile-stack {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  gap: 0.2rem;
+}
+.compile-stack {
+  margin-bottom: 0.5rem;
+}
+.compile-check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem;
+}
+.compile-status {
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+.topbar-compile {
+  padding: 0.35rem 0.9rem;
+}
+
 /* --- folder views (scrivenings / corkboard / outliner) ----- */
 .folder-view {
   height: 100%;

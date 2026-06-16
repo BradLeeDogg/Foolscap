@@ -1,0 +1,240 @@
+import { useMemo, useState } from 'react'
+import type { CompileEntry, CompilePreset, CompilePresetId } from '@shared/types'
+import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
+import { useStore } from '../store/useStore'
+import { childrenOf, descendantDocuments } from '../lib/tree'
+
+interface Props {
+  onClose: () => void
+}
+
+function buildEntries(
+  tree: Parameters<typeof childrenOf>[0],
+  rootId: string | null
+): CompileEntry[] {
+  const entries: CompileEntry[] = []
+  for (const child of childrenOf(tree, rootId)) {
+    if (child.type === 'folder') {
+      entries.push({ heading: child.title })
+      for (const d of descendantDocuments(tree, child.id)) entries.push({ docId: d.id })
+    } else {
+      entries.push({ docId: child.id })
+    }
+  }
+  return entries
+}
+
+export default function CompileDialog({ onClose }: Props): JSX.Element {
+  const meta = useStore((s) => s.meta)
+  const tree = useStore((s) => s.tree)
+
+  const topFolders = useMemo(() => childrenOf(tree, null).filter((c) => c.type === 'folder'), [tree])
+  const defaultRoot = topFolders.find((f) => f.isSpecial)?.id ?? null
+
+  const [rootId, setRootId] = useState<string | null>(defaultRoot)
+  const [presetId, setPresetId] = useState<CompilePresetId>(
+    meta ? defaultPresetFor(meta.type) : 'shunn'
+  )
+  const [preset, setPreset] = useState<CompilePreset>(
+    COMPILE_PRESETS[meta ? defaultPresetFor(meta.type) : 'shunn']
+  )
+
+  const [title, setTitle] = useState(meta?.title ?? '')
+  const [author, setAuthor] = useState('')
+  const [contact, setContact] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [byline, setByline] = useState('')
+  const [dateline, setDateline] = useState('')
+  const [includeFactCheck, setIncludeFactCheck] = useState(!!meta?.settings.factCheckEnabled)
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const choosePreset = (id: CompilePresetId): void => {
+    setPresetId(id)
+    setPreset(COMPILE_PRESETS[id])
+  }
+  const patch = (p: Partial<CompilePreset>): void => setPreset((cur) => ({ ...cur, ...p }))
+
+  const entries = useMemo(() => buildEntries(tree, rootId), [tree, rootId])
+  const docCount = entries.filter((e) => e.docId).length
+
+  const exportDocx = async (): Promise<void> => {
+    setBusy(true)
+    setStatus('Compiling…')
+    try {
+      const res = await window.api.compile.docx({
+        entries,
+        preset,
+        meta: { title, author, contact, keyword, byline, dateline },
+        includeFactCheck
+      })
+      if (!res) setStatus(null)
+      else
+        setStatus(
+          `Exported ${res.docxPath}${res.packetPath ? ` (+ fact-check packet)` : ''}`
+        )
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal compile" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2>Compile &amp; Export</h2>
+          <button className="icon" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="compile-grid">
+          <section>
+            <h4>Scope</h4>
+            <select value={rootId ?? ''} onChange={(e) => setRootId(e.target.value || null)}>
+              <option value="">Whole project</option>
+              {topFolders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title}
+                </option>
+              ))}
+            </select>
+            <p className="muted compile-count">{docCount} document(s) in binder order</p>
+
+            <h4>Preset</h4>
+            <select value={presetId} onChange={(e) => choosePreset(e.target.value as CompilePresetId)}>
+              {Object.values(COMPILE_PRESETS).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="compile-fields">
+              <label>
+                Font
+                <input value={preset.font} onChange={(e) => patch({ font: e.target.value })} />
+              </label>
+              <label>
+                Size (pt)
+                <input
+                  type="number"
+                  value={preset.fontSizePt}
+                  onChange={(e) => patch({ fontSizePt: Number(e.target.value) || 12 })}
+                />
+              </label>
+              <label>
+                Line spacing
+                <select
+                  value={preset.lineSpacing}
+                  onChange={(e) => patch({ lineSpacing: Number(e.target.value) })}
+                >
+                  <option value={1}>Single</option>
+                  <option value={1.5}>1.5</option>
+                  <option value={2}>Double</option>
+                </select>
+              </label>
+              <label>
+                Margin (in)
+                <input
+                  type="number"
+                  step="0.25"
+                  value={preset.marginInches}
+                  onChange={(e) => patch({ marginInches: Number(e.target.value) || 1 })}
+                />
+              </label>
+              <label>
+                Indent (in)
+                <input
+                  type="number"
+                  step="0.1"
+                  value={preset.firstLineIndentInches}
+                  onChange={(e) => patch({ firstLineIndentInches: Number(e.target.value) || 0 })}
+                />
+              </label>
+              <label>
+                Scene break
+                <input value={preset.sceneBreak} onChange={(e) => patch({ sceneBreak: e.target.value })} />
+              </label>
+              <label className="compile-check">
+                <input
+                  type="checkbox"
+                  checked={preset.titlePage}
+                  onChange={(e) => patch({ titlePage: e.target.checked })}
+                />
+                Title page
+              </label>
+              <label className="compile-check">
+                <input
+                  type="checkbox"
+                  checked={preset.runningHeader}
+                  onChange={(e) => patch({ runningHeader: e.target.checked })}
+                />
+                Running header
+              </label>
+              <label className="compile-check">
+                <input
+                  type="checkbox"
+                  checked={preset.chapterHeadings}
+                  onChange={(e) => patch({ chapterHeadings: e.target.checked })}
+                />
+                Chapter headings
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h4>Front matter</h4>
+            <label className="compile-stack">
+              Title
+              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </label>
+            <label className="compile-stack">
+              Author
+              <input value={author} onChange={(e) => setAuthor(e.target.value)} />
+            </label>
+            <label className="compile-stack">
+              Contact (for title page)
+              <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={3} />
+            </label>
+            <label className="compile-stack">
+              Running-header keyword
+              <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+            </label>
+            {preset.bylineDateline && (
+              <>
+                <label className="compile-stack">
+                  Byline
+                  <input value={byline} onChange={(e) => setByline(e.target.value)} />
+                </label>
+                <label className="compile-stack">
+                  Dateline
+                  <input value={dateline} onChange={(e) => setDateline(e.target.value)} />
+                </label>
+              </>
+            )}
+            <label className="compile-check">
+              <input
+                type="checkbox"
+                checked={includeFactCheck}
+                onChange={(e) => setIncludeFactCheck(e.target.checked)}
+              />
+              Export fact-check packet alongside
+            </label>
+          </section>
+        </div>
+
+        <div className="modal-foot">
+          {status && <span className="compile-status muted">{status}</span>}
+          <span className="spacer" />
+          <button onClick={onClose}>Close</button>
+          <button className="primary" disabled={busy || docCount === 0} onClick={exportDocx}>
+            Export DOCX
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

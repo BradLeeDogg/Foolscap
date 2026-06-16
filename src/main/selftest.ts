@@ -12,6 +12,8 @@ import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
 import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
+import { compileToDocxBuffer } from './services/compile'
+import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
 
 function assert(cond: unknown, msg: string): void {
@@ -128,6 +130,14 @@ export async function runSelfTest(): Promise<void> {
     !listBinder(db).some((i) => i.id === created.id),
     'removeItem deletes'
   )
+
+  const docx = await compileToDocxBuffer(paths.root, {
+    entries: [{ heading: 'Chapter One' }, { docId: doc.id }],
+    preset: COMPILE_PRESETS.shunn,
+    meta: { title: 'Test Novel', author: 'A. Writer', contact: 'a@example.com', keyword: 'TEST', byline: '', dateline: '' },
+    includeFactCheck: false
+  })
+  assert(docx.length > 1000 && docx[0] === 0x50 && docx[1] === 0x4b, 'compiled DOCX is a valid zip (PK)')
 
   const savedPath = res.meta.path
   await projectService.close()

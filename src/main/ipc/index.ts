@@ -1,5 +1,6 @@
-import { dialog, ipcMain, BrowserWindow } from 'electron'
+import { app, dialog, ipcMain, BrowserWindow } from 'electron'
 import { promises as fs } from 'fs'
+import { join } from 'path'
 import type {
   BinderCreateInput,
   BinderMoveInput,
@@ -18,15 +19,35 @@ import { createCollection, listCollections, removeCollection } from '../services
 import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
 import * as factcheck from '../services/factcheck'
+import { compileToDocxFile } from '../services/compile'
+import { writeFileAtomic } from '../services/atomic'
 import { extname } from 'path'
 import type {
   ClaimStatus,
   CollectionCriteria,
+  CompileRequest,
   MetaField,
   MetaFieldType,
   SourceKind
 } from '@shared/types'
 import type { ManualSourceInput } from '@shared/api'
+
+function factCheckPacketText(db: ReturnType<typeof projectService.requireCurrent>['db']): string {
+  const titleOf = new Map(binder.listBinder(db).map((i) => [i.id, i.title]))
+  const lines = ['FACT-CHECK PACKET', '='.repeat(40), '']
+  for (const { docId, claims } of factcheck.buildPacket(db)) {
+    lines.push(`## ${titleOf.get(docId) ?? docId}`)
+    for (const c of claims) {
+      lines.push(`  [${c.status}${c.needsQuoteCheck ? ', CHECK VS AUDIO' : ''}] ${c.text}`)
+      for (const s of c.sources) {
+        lines.push(`      - ${s.title}${s.url ? ` (${s.url})` : ''}${s.locator ? ` @ ${s.locator}` : ''}`)
+      }
+      if (c.sources.length === 0) lines.push('      - (no source linked)')
+    }
+    lines.push('')
+  }
+  return lines.join('\n')
+}
 
 function kindFromExt(file: string): SourceKind {
   const ext = extname(file).toLowerCase()
@@ -311,5 +332,23 @@ export function registerIpc(): void {
   ipcMain.handle('factcheck:outstanding', () => {
     const { db } = projectService.requireCurrent()
     return factcheck.listOutstanding(db)
+  })
+
+  // --- compile / export -----------------------------------------------------
+  ipcMain.handle('compile:docx', async (_e, req: CompileRequest) => {
+    const { db, paths } = projectService.requireCurrent()
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export manuscript',
+      defaultPath: join(app.getPath('documents'), `${req.meta.title || 'Manuscript'}.docx`),
+      filters: [{ name: 'Word Document', extensions: ['docx'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await compileToDocxFile(paths.root, req, res.filePath)
+    let packetPath: string | null = null
+    if (req.includeFactCheck) {
+      packetPath = res.filePath.replace(/\.docx$/i, '') + ' — fact-check.txt'
+      await writeFileAtomic(packetPath, factCheckPacketText(db))
+    }
+    return { docxPath: res.filePath, packetPath }
   })
 }

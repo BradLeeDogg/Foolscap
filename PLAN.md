@@ -90,10 +90,12 @@ MyNovel.writeproject/
 - [ ] Export the fact-check packet alongside the manuscript → with Compile (M5)
 
 ### M5 — Phase 5: Compile, Export & Import
-- [ ] Compile tool (assemble in binder order; apply layout; non-destructive)
-- [ ] Presets (editable): Shunn fiction, nonfiction proposal, journalism, dissertation/academic
-- [ ] Export: PDF (Shunn), DOCX; then ePub (KDP)
-- [ ] Import: DOCX (mammoth), Markdown, RTF; then Scrivener .scriv (best-effort, documented limits)
+- [x] Compile tool (assemble in binder order; apply layout; non-destructive)
+- [x] Presets (editable): Shunn fiction, nonfiction proposal, journalism, dissertation/academic
+- [x] Export: DOCX (title page, chapter headings, running header, footnotes, scene breaks)
+- [x] Fact-check packet export alongside the manuscript (.txt)
+- [ ] Export: PDF (Electron printToPDF) — M5b
+- [ ] Import: DOCX (mammoth), Markdown, RTF; then Scrivener .scriv — M5b
 
 ### M6+ — Later (explicitly out of v1)
 - [ ] Screenplay/stage mode (Courier, Fountain underlying)

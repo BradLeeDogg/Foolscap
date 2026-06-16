@@ -180,6 +180,48 @@ export interface MetaField {
 /** Per-item metadata: fieldId -> value. */
 export type MetaValues = Record<string, string>
 
+export type CompilePresetId = 'shunn' | 'nonfiction-proposal' | 'journalism' | 'dissertation'
+
+/** A submission layout applied at compile/export. Editable before exporting. */
+export interface CompilePreset {
+  id: CompilePresetId
+  name: string
+  font: string
+  fontSizePt: number
+  lineSpacing: number
+  marginInches: number
+  pageSize: 'us-letter' | 'a4'
+  firstLineIndentInches: number
+  titlePage: boolean
+  runningHeader: boolean
+  sceneBreak: string
+  bylineDateline: boolean
+  chapterHeadings: boolean
+}
+
+/** Front-matter / identifying info supplied at compile time (never stored in prose). */
+export interface CompileMeta {
+  title: string
+  author: string
+  contact: string
+  keyword: string
+  byline: string
+  dateline: string
+}
+
+/** Ordered compile stream: heading entries (chapter titles) and document entries. */
+export interface CompileEntry {
+  heading?: string
+  docId?: string
+}
+
+export interface CompileRequest {
+  entries: CompileEntry[]
+  preset: CompilePreset
+  meta: CompileMeta
+  includeFactCheck: boolean
+}
+
 export const DEFAULT_MANUSCRIPT: ManuscriptDefaults = {
   fontFamily: 'Times New Roman',
   fontSizePt: 12,

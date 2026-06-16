@@ -95,7 +95,7 @@ app.whenReady().then(() => {
               const folder = S.getState().tree.find((t) => t.type === 'folder');
               if (folder) S.getState().select(folder.id);
               await step(() => {
-                const open = ['Find', 'Inspector', 'Sources', 'Fact-check'];
+                const open = ['Find', 'Inspector', 'Sources', 'Fact-check', 'Compile'];
                 document.querySelectorAll('button').forEach((b) => {
                   if (open.includes(b.textContent || '')) b.click();
                 });

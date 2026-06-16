@@ -85,6 +85,9 @@ const api: WProcessorAPI = {
     unlinkSource: (claimId, sourceId) =>
       ipcRenderer.invoke('factcheck:unlinkSource', claimId, sourceId),
     outstanding: () => ipcRenderer.invoke('factcheck:outstanding')
+  },
+  compile: {
+    docx: (req) => ipcRenderer.invoke('compile:docx', req)
   }
 }
 

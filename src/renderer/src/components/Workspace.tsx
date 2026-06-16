@@ -11,6 +11,7 @@ import FindPanel from './FindPanel'
 import Inspector from './Inspector'
 import SourcesPanel from './SourcesPanel'
 import FactCheckPanel from './FactCheckPanel'
+import CompileDialog from './CompileDialog'
 import CompositionMode from './CompositionMode'
 
 function saveLabel(state: string, at: number | null): string {
@@ -47,6 +48,7 @@ export default function Workspace(): JSX.Element {
   const [showSources, setShowSources] = useState(false)
   // Journalism types open the fact-check packet by default.
   const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
+  const [showCompile, setShowCompile] = useState(false)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
 
   const handleClose = async (): Promise<void> => {
@@ -114,6 +116,10 @@ export default function Workspace(): JSX.Element {
             Snapshots
           </button>
           <button onClick={handleBackup}>Back up now</button>
+          <span className="sep" />
+          <button className="primary topbar-compile" onClick={() => setShowCompile(true)}>
+            Compile
+          </button>
         </div>
       </header>
 
@@ -188,6 +194,7 @@ export default function Workspace(): JSX.Element {
       </div>
 
       {composition && <CompositionMode />}
+      {showCompile && <CompileDialog onClose={() => setShowCompile(false)} />}
     </div>
   )
 }

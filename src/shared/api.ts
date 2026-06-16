@@ -6,6 +6,7 @@ import type {
   ClaimWithSources,
   Collection,
   CollectionCriteria,
+  CompileRequest,
   DocumentContent,
   MetaField,
   MetaFieldType,
@@ -153,5 +154,9 @@ export interface WProcessorAPI {
     linkSource(claimId: string, sourceId: string): Promise<void>
     unlinkSource(claimId: string, sourceId: string): Promise<void>
     outstanding(): Promise<ClaimWithSources[]>
+  }
+  compile: {
+    /** Build a manuscript .docx (save dialog). Returns paths, or null if cancelled. */
+    docx(req: CompileRequest): Promise<{ docxPath: string; packetPath: string | null } | null>
   }
 }
