@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useStore } from '../store/useStore'
+import { allDocuments } from '../lib/tree'
 import Binder from './Binder'
 import Editor from './Editor'
+import SplitPane from './SplitPane'
 import SnapshotsPanel from './SnapshotsPanel'
+import TargetsPanel from './TargetsPanel'
+import CompositionMode from './CompositionMode'
 
 function saveLabel(state: string, at: number | null): string {
   switch (state) {
@@ -20,13 +24,20 @@ function saveLabel(state: string, at: number | null): string {
 
 export default function Workspace(): JSX.Element {
   const meta = useStore((s) => s.meta)
+  const tree = useStore((s) => s.tree)
+  const selectedId = useStore((s) => s.selectedId)
   const closeProject = useStore((s) => s.closeProject)
   const saveState = useStore((s) => s.saveState)
   const lastSavedAt = useStore((s) => s.lastSavedAt)
   const docWordCount = useStore((s) => s.docWordCount)
   const selectionWordCount = useStore((s) => s.selectionWordCount)
+  const splitId = useStore((s) => s.splitId)
+  const setSplit = useStore((s) => s.setSplit)
+  const composition = useStore((s) => s.composition)
+  const setComposition = useStore((s) => s.setComposition)
 
   const [showSnapshots, setShowSnapshots] = useState(false)
+  const [showTargets, setShowTargets] = useState(false)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
 
   const handleClose = async (): Promise<void> => {
@@ -45,6 +56,16 @@ export default function Workspace(): JSX.Element {
     setTimeout(() => setBackupMsg(null), 4000)
   }
 
+  const toggleSplit = (): void => {
+    if (splitId) {
+      setSplit(null)
+      return
+    }
+    const selected = tree.find((t) => t.id === selectedId)
+    const target = selected?.type === 'document' ? selected.id : allDocuments(tree)[0]?.id ?? null
+    setSplit(target)
+  }
+
   return (
     <div className="workspace">
       <header className="topbar">
@@ -61,7 +82,16 @@ export default function Workspace(): JSX.Element {
           </span>
           <span className={`savestate ${saveState}`}>{saveLabel(saveState, lastSavedAt)}</span>
           <span className="sep" />
-          <button onClick={() => setShowSnapshots((v) => !v)}>Snapshots</button>
+          <button className={splitId ? 'on' : ''} onClick={toggleSplit}>
+            Split
+          </button>
+          <button onClick={() => setComposition(true)}>Compose</button>
+          <button className={showTargets ? 'on' : ''} onClick={() => setShowTargets((v) => !v)}>
+            Targets
+          </button>
+          <button className={showSnapshots ? 'on' : ''} onClick={() => setShowSnapshots((v) => !v)}>
+            Snapshots
+          </button>
           <button onClick={handleBackup}>Back up now</button>
         </div>
       </header>
@@ -70,23 +100,41 @@ export default function Workspace(): JSX.Element {
 
       <div className="workspace-body">
         <PanelGroup direction="horizontal" autoSaveId="wp-main-split">
-          <Panel defaultSize={22} minSize={14} maxSize={40} className="pane">
+          <Panel id="binder" order={1} defaultSize={22} minSize={14} maxSize={40} className="pane">
             <Binder />
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel minSize={30} className="pane">
+          <Panel id="editor" order={2} minSize={25} className="pane">
             <Editor />
           </Panel>
+          {splitId && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="split" order={3} defaultSize={38} minSize={20} className="pane">
+                <SplitPane />
+              </Panel>
+            </>
+          )}
+          {showTargets && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="targets" order={4} defaultSize={22} minSize={16} maxSize={38} className="pane">
+                <TargetsPanel onClose={() => setShowTargets(false)} />
+              </Panel>
+            </>
+          )}
           {showSnapshots && (
             <>
               <PanelResizeHandle className="resize-handle" />
-              <Panel defaultSize={24} minSize={16} maxSize={40} className="pane">
+              <Panel id="snapshots" order={5} defaultSize={24} minSize={16} maxSize={40} className="pane">
                 <SnapshotsPanel onClose={() => setShowSnapshots(false)} />
               </Panel>
             </>
           )}
         </PanelGroup>
       </div>
+
+      {composition && <CompositionMode />}
     </div>
   )
 }

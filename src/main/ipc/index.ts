@@ -159,4 +159,15 @@ export function registerIpc(): void {
     const { paths } = projectService.requireCurrent()
     return listBackups(paths.root)
   })
+
+  // --- window (composition mode) -------------------------------------------
+  ipcMain.handle('window:setFullScreen', (e, on: boolean) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    win?.setFullScreen(on)
+    return win?.isFullScreen() ?? false
+  })
+  ipcMain.handle('window:isFullScreen', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    return win?.isFullScreen() ?? false
+  })
 }

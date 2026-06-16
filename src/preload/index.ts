@@ -44,6 +44,10 @@ const api: WProcessorAPI = {
   backup: {
     runNow: () => ipcRenderer.invoke('backup:runNow'),
     list: () => ipcRenderer.invoke('backup:list')
+  },
+  window: {
+    setFullScreen: (on) => ipcRenderer.invoke('window:setFullScreen', on),
+    isFullScreen: () => ipcRenderer.invoke('window:isFullScreen')
   }
 }
 

@@ -69,6 +69,10 @@ export interface ProjectSettings {
   autosaveDebounceMs: number
   backupIntervalMs: number
   maxAutomaticBackups: number
+  /** Writing targets & deadline (null = unset). */
+  projectWordTarget?: number | null
+  sessionWordTarget?: number | null
+  deadline?: string | null
 }
 
 export interface ProjectMeta {

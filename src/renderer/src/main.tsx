@@ -5,10 +5,14 @@ import { useStore } from './store/useStore'
 import type { OpenProjectResult } from '@shared/api'
 import './styles/global.css'
 
-// Headless E2E/smoke hook: lets a driver load a project into the store without
-// clicking. Renderer-only (writes to local state); exposes no new capability.
-;(window as unknown as { __wpOpenResult?: (r: OpenProjectResult) => void }).__wpOpenResult = (r) =>
-  useStore.getState().openResult(r)
+// Headless E2E/smoke hooks: let a driver load a project + flip view modes
+// without clicking. Renderer-only (local state); exposes no new capability.
+const w = window as unknown as {
+  __wpOpenResult?: (r: OpenProjectResult) => void
+  __wpStore?: typeof useStore
+}
+w.__wpOpenResult = (r) => useStore.getState().openResult(r)
+w.__wpStore = useStore
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

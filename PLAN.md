@@ -66,11 +66,13 @@ MyNovel.writeproject/
 - [x] Automatic timestamped folder backups (background)
 - [x] End-to-end storage self-test (WP_SELFTEST) green in Electron runtime
 
-### M2 — Phase 2: Structure & viewing modes
-- [ ] Scrivenings (stitched continuous editable view of a folder's children)
-- [ ] Full-screen composition mode (desktop-blacking, dark backdrop, optional typewriter scrolling)
-- [ ] Split view (resizable; either pane any document)
-- [ ] Writing targets & deadlines (project + session), progress feedback
+### M2 — Phase 2: Structure & viewing modes  ✅
+- [x] Scrivenings (stitched continuous editable view of a folder's children)
+- [x] Full-screen composition mode (desktop-blacking, dark backdrop, optional typewriter scrolling)
+- [x] Split view (resizable; either pane any document)
+- [x] Writing targets & deadlines (project + session), progress feedback
+- [x] Reusable DocumentEditor extracted (single / split / scrivenings / composition)
+- Note: composition covers the active monitor; multi-monitor blackout deferred.
 
 ### M3 — Phase 3: Planning & organization
 - [ ] Corkboard (synopsis cards; drag reorders binder; color-coded status)

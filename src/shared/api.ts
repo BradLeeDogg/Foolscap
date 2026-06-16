@@ -92,4 +92,9 @@ export interface WProcessorAPI {
     runNow(): Promise<BackupInfo>
     list(): Promise<BackupInfo[]>
   }
+  window: {
+    /** Toggle borderless full-screen (composition mode). Returns the new state. */
+    setFullScreen(on: boolean): Promise<boolean>
+    isFullScreen(): Promise<boolean>
+  }
 }

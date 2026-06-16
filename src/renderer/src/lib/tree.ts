@@ -34,6 +34,34 @@ export function flattenVisible(items: BinderItem[]): FlatNode[] {
   return out
 }
 
+/** Every document in the project, in reading (binder) order. */
+export function allDocuments(items: BinderItem[]): BinderItem[] {
+  const byParent = groupByParent(items)
+  const out: BinderItem[] = []
+  const walk = (parentId: string | null): void => {
+    for (const child of byParent.get(parentId) ?? []) {
+      if (child.type === 'document') out.push(child)
+      walk(child.id)
+    }
+  }
+  walk(null)
+  return out
+}
+
+/** All documents under a folder, in reading (binder) order, depth-first. */
+export function descendantDocuments(items: BinderItem[], folderId: string): BinderItem[] {
+  const byParent = groupByParent(items)
+  const out: BinderItem[] = []
+  const walk = (parentId: string): void => {
+    for (const child of byParent.get(parentId) ?? []) {
+      if (child.type === 'document') out.push(child)
+      else walk(child.id)
+    }
+  }
+  walk(folderId)
+  return out
+}
+
 export interface Projection {
   depth: number
   parentId: string | null

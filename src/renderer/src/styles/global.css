@@ -591,6 +591,180 @@ fieldset.field {
   font-size: 0.8rem;
 }
 
+button.on {
+  background: var(--selected);
+}
+
+/* --- scrivenings (stitched view) --------------------------- */
+.scrivenings {
+  max-width: var(--ms-page-width, 8.5in);
+  margin: 1.25rem auto;
+}
+.scriv-section {
+  margin-bottom: 0.75rem;
+}
+.scriv-head {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px dashed var(--rule-strong);
+  cursor: pointer;
+  user-select: none;
+}
+.scriv-head:hover {
+  color: var(--ink);
+}
+.editor-embedded .paper-embedded {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.5rem var(--ms-margin, 1in);
+}
+
+/* --- split view -------------------------------------------- */
+.split-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--rule);
+}
+.split-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.split-head select {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.4rem;
+}
+.split-pane .editor-pane {
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- composition mode (dark, distraction-free) ------------- */
+.composition {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #111014;
+  display: flex;
+  flex-direction: column;
+}
+.composition-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1rem;
+  color: #8c887f;
+  font-size: 0.8rem;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+.composition-bar:hover {
+  opacity: 1;
+}
+.composition-bar .composition-title {
+  color: #b8b3a7;
+}
+.composition-bar button {
+  color: #cfcabd;
+}
+.composition-bar button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.composition-bar button.on {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.composition-stage {
+  flex: 1;
+  min-height: 0;
+}
+.composition .editor-scroll {
+  background: #111014;
+}
+.composition .paper {
+  background: transparent;
+  box-shadow: none;
+}
+.composition .manuscript .ProseMirror {
+  color: #e7e3d8;
+}
+.composition .manuscript p.is-editor-empty:first-child::before {
+  color: #56524a;
+}
+.composition .editor-empty {
+  color: #8c887f;
+}
+
+/* typewriter scrolling: room to center first/last lines */
+.editor-scroll.typewriter .paper {
+  margin-top: 40vh;
+  margin-bottom: 40vh;
+}
+
+/* --- targets ----------------------------------------------- */
+.target-section {
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--rule);
+}
+.target-section h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.target-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+.target-bar {
+  height: 8px;
+  background: var(--rule);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.target-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+.target-figures {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.target-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.45rem;
+}
+.target-field span {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+.target-field input {
+  width: 9rem;
+}
+.target-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--accent);
+}
+
 /* --- snapshots drawer -------------------------------------- */
 .drawer {
   height: 100%;

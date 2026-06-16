@@ -49,7 +49,10 @@ function defaultSettings(type: ProjectType): ProjectSettings {
     typewriterSound: false,
     autosaveDebounceMs: 800,
     backupIntervalMs: 15 * 60 * 1000,
-    maxAutomaticBackups: 25
+    maxAutomaticBackups: 25,
+    projectWordTarget: null,
+    sessionWordTarget: null,
+    deadline: null
   }
 }
 

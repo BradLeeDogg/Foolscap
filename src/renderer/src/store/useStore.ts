@@ -15,6 +15,13 @@ interface AppState {
   docWordCount: number
   selectionWordCount: number
 
+  /** Second pane document (split view); null = split closed. */
+  splitId: string | null
+  /** Full-screen composition mode active. */
+  composition: boolean
+  /** Total project words when the project was opened (session baseline). */
+  sessionStartWords: number
+
   openResult: (result: OpenProjectResult) => void
   closeProject: () => void
   setTree: (tree: BinderItem[]) => void
@@ -23,6 +30,15 @@ interface AppState {
   setSaveState: (state: SaveState, at?: number) => void
   setDocWordCount: (n: number) => void
   setSelectionWordCount: (n: number) => void
+  setSplit: (id: string | null) => void
+  setComposition: (on: boolean) => void
+  /** Update one item's cached word count (after a save) so totals stay live. */
+  setItemWordCount: (id: string, n: number) => void
+}
+
+/** Sum of cached word counts across all documents. */
+export function totalWords(tree: BinderItem[]): number {
+  return tree.reduce((sum, it) => (it.type === 'document' ? sum + it.wordCount : sum), 0)
 }
 
 /** First selectable document in binder order, used to auto-open on project load. */
@@ -52,6 +68,9 @@ export const useStore = create<AppState>((set) => ({
   lastSavedAt: null,
   docWordCount: 0,
   selectionWordCount: 0,
+  splitId: null,
+  composition: false,
+  sessionStartWords: 0,
 
   openResult: (result) =>
     set({
@@ -62,7 +81,10 @@ export const useStore = create<AppState>((set) => ({
       saveState: 'idle',
       lastSavedAt: null,
       docWordCount: 0,
-      selectionWordCount: 0
+      selectionWordCount: 0,
+      splitId: null,
+      composition: false,
+      sessionStartWords: totalWords(result.tree)
     }),
   closeProject: () =>
     set({
@@ -73,12 +95,21 @@ export const useStore = create<AppState>((set) => ({
       saveState: 'idle',
       lastSavedAt: null,
       docWordCount: 0,
-      selectionWordCount: 0
+      selectionWordCount: 0,
+      splitId: null,
+      composition: false,
+      sessionStartWords: 0
     }),
   setTree: (tree) => set({ tree }),
   setMeta: (meta) => set({ meta }),
   select: (id) => set({ selectedId: id, selectionWordCount: 0 }),
   setSaveState: (state, at) => set(at ? { saveState: state, lastSavedAt: at } : { saveState: state }),
   setDocWordCount: (n) => set({ docWordCount: n }),
-  setSelectionWordCount: (n) => set({ selectionWordCount: n })
+  setSelectionWordCount: (n) => set({ selectionWordCount: n }),
+  setSplit: (id) => set({ splitId: id }),
+  setComposition: (on) => set({ composition: on }),
+  setItemWordCount: (id, n) =>
+    set((s) => ({
+      tree: s.tree.map((it) => (it.id === id ? { ...it, wordCount: n } : it))
+    }))
 }))

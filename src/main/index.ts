@@ -82,15 +82,31 @@ app.whenReady().then(() => {
         const { tmpdir } = await import('os')
         const { promises: fsp } = await import('fs')
         const loc = await fsp.mkdtemp(join(tmpdir(), 'wp-smoke-'))
+        // Open a project, then drive Scrivenings (folder), split view, and
+        // composition mode so each Phase 2 path mounts under the error capture.
         await win.webContents.executeJavaScript(
           `window.api.project.create({ title: 'Smoke', type: 'novel', location: ${JSON.stringify(
             loc
-          )} }).then((r) => window.__wpOpenResult(r))`
+          )} }).then((r) => {
+            window.__wpOpenResult(r);
+            const S = window.__wpStore;
+            setTimeout(() => {
+              const st = S.getState();
+              const folder = st.tree.find((t) => t.type === 'folder');
+              if (folder) st.select(folder.id);
+              const doc = st.tree.find((t) => t.type === 'document');
+              if (doc) st.setSplit(doc.id);
+              setTimeout(() => {
+                S.getState().setComposition(true);
+                setTimeout(() => S.getState().setComposition(false), 500);
+              }, 500);
+            }, 500);
+          })`
         )
         setTimeout(() => {
-          console.log('WP_SMOKE_WORKSPACE_OK: workspace + editor mounted')
+          console.log('WP_SMOKE_WORKSPACE_OK: workspace, scrivenings, split & composition mounted')
           app.quit()
-        }, 1800)
+        }, 3000)
       } catch (err) {
         console.error('WP_SMOKE_DRIVE_FAILED:', err)
         app.quit()
