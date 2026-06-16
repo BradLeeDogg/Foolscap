@@ -448,6 +448,149 @@ fieldset.field {
   height: 0;
 }
 
+/* --- editor pane + annotations ----------------------------- */
+.editor-pane {
+  position: relative;
+  height: 100%;
+}
+.editor-stage {
+  display: flex;
+  height: 100%;
+}
+.editor-stage .editor-scroll {
+  flex: 1;
+}
+.annot-toggle {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  z-index: 5;
+  font-size: 0.76rem;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+}
+
+/* comment mark + footnote marker inside the manuscript */
+.manuscript .ProseMirror {
+  counter-reset: footnote;
+}
+.manuscript .comment {
+  background: rgba(216, 166, 87, 0.28);
+  border-bottom: 1px dotted #a9802f;
+  cursor: pointer;
+}
+.manuscript sup.footnote {
+  font-size: 0.7em;
+  color: var(--accent);
+  cursor: pointer;
+  margin-left: 1px;
+}
+.manuscript sup.footnote::before {
+  counter-increment: footnote;
+  content: '[' counter(footnote) ']';
+}
+.manuscript sup.footnote.ProseMirror-selectednode::before {
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+
+/* selection bubble menu */
+.bubble {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--ink);
+  border-radius: 7px;
+  padding: 3px;
+  box-shadow: var(--shadow);
+}
+.bubble button {
+  color: var(--card);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.bubble button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.bubble button.on {
+  background: rgba(255, 255, 255, 0.28);
+}
+.bubble-sep {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 2px 3px;
+}
+
+.annotations {
+  width: 320px;
+  flex: none;
+  overflow-y: auto;
+}
+.annot-section {
+  padding: 0.6rem 0.7rem;
+  border-bottom: 1px solid var(--rule);
+}
+.annot-section h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.annot-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.annot-head-row button {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.4rem;
+}
+.annot-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.annot-quote {
+  margin: 0 0 0.35rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--rule-strong);
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.annot-card textarea {
+  width: 100%;
+  min-height: 3em;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.82rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 0.35rem;
+  background: var(--card);
+}
+.annot-index {
+  font-weight: 600;
+  color: var(--accent);
+}
+.annot-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.annot-actions button {
+  font-size: 0.76rem;
+  padding: 0.15rem 0.4rem;
+}
+.annot-hint {
+  font-size: 0.8rem;
+}
+
 /* --- snapshots drawer -------------------------------------- */
 .drawer {
   height: 100%;

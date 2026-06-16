@@ -34,13 +34,7 @@ function createWindow(): BrowserWindow {
 
   window.on('ready-to-show', () => {
     window.show()
-    // Headless CI/smoke boot: let the renderer mount + call the bridge, then exit.
-    if (process.env['WP_SMOKE']) {
-      setTimeout(() => {
-        console.log('WP_SMOKE_OK: window booted, renderer mounted')
-        app.quit()
-      }, 1200)
-    }
+    if (process.env['WP_SMOKE']) console.log('WP_SMOKE_OK: window booted, renderer mounted')
   })
 
   window.webContents.setWindowOpenHandler((details) => {
@@ -78,7 +72,31 @@ app.whenReady().then(() => {
     return
   }
 
-  createWindow()
+  const win = createWindow()
+
+  // Headless GUI smoke: drive the renderer into the Workspace + TipTap editor so
+  // a runtime error in the editor path surfaces, then quit.
+  if (process.env['WP_SMOKE']) {
+    win.webContents.once('did-finish-load', async () => {
+      try {
+        const { tmpdir } = await import('os')
+        const { promises: fsp } = await import('fs')
+        const loc = await fsp.mkdtemp(join(tmpdir(), 'wp-smoke-'))
+        await win.webContents.executeJavaScript(
+          `window.api.project.create({ title: 'Smoke', type: 'novel', location: ${JSON.stringify(
+            loc
+          )} }).then((r) => window.__wpOpenResult(r))`
+        )
+        setTimeout(() => {
+          console.log('WP_SMOKE_WORKSPACE_OK: workspace + editor mounted')
+          app.quit()
+        }, 1800)
+      } catch (err) {
+        console.error('WP_SMOKE_DRIVE_FAILED:', err)
+        app.quit()
+      }
+    })
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -61,7 +61,7 @@ MyNovel.writeproject/
 - [x] Editor: TipTap in centered paper column — **12pt Times New Roman, double-spaced, 1in margins, US Letter**
 - [x] Autosave to disk (debounced, atomic) + reload on open
 - [x] Live word count (per document + per selection)
-- [ ] Inline comments + footnotes/endnotes (custom nodes/marks) — M1b, in progress
+- [x] Inline comments + footnotes/endnotes (custom nodes/marks)
 - [x] Manual named snapshots with one-click rollback
 - [x] Automatic timestamped folder backups (background)
 - [x] End-to-end storage self-test (WP_SELFTEST) green in Electron runtime

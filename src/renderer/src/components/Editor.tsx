@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -8,6 +8,10 @@ import type { JSONContent } from '@tiptap/core'
 import type { ManuscriptDefaults } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 import { useStore } from '../store/useStore'
+import { Comment } from '../editor/comment'
+import { Footnote } from '../editor/footnote'
+import { listComments, listFootnotes } from '../editor/annotations'
+import AnnotationsPanel from './AnnotationsPanel'
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
 
@@ -42,6 +46,7 @@ export default function Editor(): JSX.Element {
   )
   const isDocument = selectedItem?.type === 'document'
 
+  const [showAnnot, setShowAnnot] = useState(false)
   const loadedIdRef = useRef<string | null>(null)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,6 +57,8 @@ export default function Editor(): JSX.Element {
       StarterKit,
       Underline,
       CharacterCount,
+      Comment,
+      Footnote,
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
@@ -146,10 +153,51 @@ export default function Editor(): JSX.Element {
     )
   }
 
+  const addComment = (): void => {
+    if (!editor || editor.state.selection.empty) return
+    const text = window.prompt('Comment on the selected text:')
+    if (text && text.trim()) editor.chain().focus().setComment(text.trim()).run()
+  }
+  const addFootnote = (): void => {
+    if (!editor) return
+    const to = editor.state.selection.to
+    const text = window.prompt('Footnote text:')
+    if (text == null) return
+    editor.chain().focus().setTextSelection(to).insertFootnote(text.trim()).run()
+  }
+
+  const annotCount = editor ? listComments(editor).length + listFootnotes(editor).length : 0
+
   return (
-    <div className="editor-scroll">
-      <div className="paper" style={meta ? paperStyle(meta.settings.manuscript) : undefined}>
-        <EditorContent editor={editor} className="manuscript" />
+    <div className="editor-pane">
+      {editor && (
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="bubble">
+          <button className={editor.isActive('bold') ? 'on' : ''} onClick={() => editor.chain().focus().toggleBold().run()}>
+            <strong>B</strong>
+          </button>
+          <button className={editor.isActive('italic') ? 'on' : ''} onClick={() => editor.chain().focus().toggleItalic().run()}>
+            <em>I</em>
+          </button>
+          <button className={editor.isActive('underline') ? 'on' : ''} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+            <span style={{ textDecoration: 'underline' }}>U</span>
+          </button>
+          <span className="bubble-sep" />
+          <button onClick={addComment} title="Comment on selection">❝</button>
+          <button onClick={addFootnote} title="Footnote">†</button>
+        </BubbleMenu>
+      )}
+
+      <button className="annot-toggle" onClick={() => setShowAnnot((v) => !v)}>
+        Notes{annotCount ? ` · ${annotCount}` : ''}
+      </button>
+
+      <div className="editor-stage">
+        <div className="editor-scroll">
+          <div className="paper" style={meta ? paperStyle(meta.settings.manuscript) : undefined}>
+            <EditorContent editor={editor} className="manuscript" />
+          </div>
+        </div>
+        {showAnnot && editor && <AnnotationsPanel editor={editor} onClose={() => setShowAnnot(false)} />}
       </div>
     </div>
   )
