@@ -12,6 +12,8 @@ import {
   TextRun,
   convertInchesToTwip
 } from 'docx'
+import archiver from 'archiver'
+import { randomUUID } from 'crypto'
 import type { CompilePreset, CompileRequest, ProseMirrorNode } from '@shared/types'
 import { countWords, readDocument } from './documents'
 import { writeFileAtomic } from './atomic'
@@ -381,4 +383,127 @@ export async function compileToPdfFile(
 ): Promise<void> {
   const buffer = await compileToPdfBuffer(root, req)
   await writeFileAtomic(outPath, buffer)
+}
+
+// --- ePub (hand-rolled EPUB 3 via archiver) ---------------------------------
+
+interface EpubChapter {
+  title: string
+  xhtml: string
+}
+
+/** XHTML needs void elements closed; close <br> and <hr> emitted by the HTML pass. */
+function xhtmlSafe(html: string): string {
+  return html.replace(/<br>/g, '<br/>').replace(/<hr>/g, '<hr/>')
+}
+
+function buildChapters(req: CompileRequest, contents: Record<string, { doc?: ProseMirrorNode } | null>): EpubChapter[] {
+  const chapters: EpubChapter[] = []
+  let current: EpubChapter | null = null
+  const ensure = (title: string): void => {
+    current = { title, xhtml: '' }
+    chapters.push(current)
+  }
+  for (const e of req.entries) {
+    if (e.heading) {
+      ensure(e.heading)
+    } else if (e.docId) {
+      if (!current) ensure(req.meta.title || 'Text')
+      const notes: string[] = []
+      let html = blockHtml(contents[e.docId]?.doc?.content, notes)
+      if (notes.length) {
+        html +=
+          '<hr/><section class="notes"><h3>Notes</h3><ol>' +
+          notes.map((n) => `<li>${esc(n)}</li>`).join('') +
+          '</ol></section>'
+      }
+      current!.xhtml += xhtmlSafe(html)
+    }
+  }
+  return chapters
+}
+
+function zipToBuffer(add: (a: archiver.Archiver) => void): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    const archive = archiver('zip', { zlib: { level: 9 } })
+    archive.on('data', (d: Buffer) => chunks.push(d))
+    archive.on('end', () => resolve(Buffer.concat(chunks)))
+    archive.on('error', reject)
+    add(archive)
+    void archive.finalize()
+  })
+}
+
+export async function compileToEpubBuffer(root: string, req: CompileRequest): Promise<Buffer> {
+  const { meta } = req
+  const contents: Record<string, { doc?: ProseMirrorNode } | null> = {}
+  for (const e of req.entries) {
+    if (e.docId && !(e.docId in contents)) contents[e.docId] = (await readDocument(root, e.docId)) as never
+  }
+  const chapters = buildChapters(req, contents)
+  const uuid = randomUUID()
+  const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+  const title = esc(meta.title || 'Untitled')
+  const author = esc(meta.author || 'Unknown')
+
+  const page = (body: string, t: string): string =>
+    `<?xml version="1.0" encoding="UTF-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${t}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body>${body}</body></html>`
+
+  const titlePage = page(
+    `<div class="title-page"><h1>${title}</h1><p class="author">${author}</p></div>`,
+    title
+  )
+  const navItems = chapters.map((c, i) => `<li><a href="ch${i}.xhtml">${esc(c.title)}</a></li>`).join('')
+  const nav =
+    `<?xml version="1.0" encoding="UTF-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>${title}</title></head>` +
+    `<body><nav epub:type="toc" id="toc"><h1>Contents</h1><ol>${navItems}</ol></nav></body></html>`
+  const ncx =
+    `<?xml version="1.0" encoding="UTF-8"?>\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="urn:uuid:${uuid}"/></head>` +
+    `<docTitle><text>${title}</text></docTitle><navMap>` +
+    chapters
+      .map(
+        (c, i) =>
+          `<navPoint id="np${i}" playOrder="${i + 1}"><navLabel><text>${esc(c.title)}</text></navLabel><content src="ch${i}.xhtml"/></navPoint>`
+      )
+      .join('') +
+    `</navMap></ncx>`
+
+  const manifestItems = [
+    '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
+    '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
+    '<item id="css" href="style.css" media-type="text/css"/>',
+    '<item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>',
+    ...chapters.map((_, i) => `<item id="ch${i}" href="ch${i}.xhtml" media-type="application/xhtml+xml"/>`)
+  ].join('')
+  const spine = ['<itemref idref="title"/>', ...chapters.map((_, i) => `<itemref idref="ch${i}"/>`)].join('')
+  const opf =
+    `<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">` +
+    `<dc:identifier id="bookid">urn:uuid:${uuid}</dc:identifier><dc:title>${title}</dc:title><dc:creator>${author}</dc:creator><dc:language>en-US</dc:language>` +
+    `<meta property="dcterms:modified">${modified}</meta></metadata><manifest>${manifestItems}</manifest><spine toc="ncx">${spine}</spine></package>`
+
+  const css = `body{font-family:'${req.preset.font}',Georgia,serif;line-height:${req.preset.lineSpacing};} h1,h2,h3{font-weight:600;} p{margin:0;text-indent:${req.preset.firstLineIndentInches}in;} p:first-of-type{text-indent:0;} .title-page{text-align:center;margin-top:25%;} .title-page .author{margin-top:2em;font-style:italic;} .notes{font-size:0.9em;}`
+  const container = `<?xml version="1.0"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`
+
+  return zipToBuffer((a) => {
+    // mimetype MUST be first and stored uncompressed.
+    a.append('application/epub+zip', { name: 'mimetype', store: true })
+    a.append(container, { name: 'META-INF/container.xml' })
+    a.append(opf, { name: 'OEBPS/content.opf' })
+    a.append(nav, { name: 'OEBPS/nav.xhtml' })
+    a.append(ncx, { name: 'OEBPS/toc.ncx' })
+    a.append(css, { name: 'OEBPS/style.css' })
+    a.append(titlePage, { name: 'OEBPS/title.xhtml' })
+    chapters.forEach((c, i) =>
+      a.append(page(`<h1>${esc(c.title)}</h1>${c.xhtml}`, esc(c.title)), { name: `OEBPS/ch${i}.xhtml` })
+    )
+  })
+}
+
+export async function compileToEpubFile(
+  root: string,
+  req: CompileRequest,
+  outPath: string
+): Promise<void> {
+  await writeFileAtomic(outPath, await compileToEpubBuffer(root, req))
 }

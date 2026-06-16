@@ -88,7 +88,8 @@ const api: WProcessorAPI = {
   },
   compile: {
     docx: (req) => ipcRenderer.invoke('compile:docx', req),
-    pdf: (req) => ipcRenderer.invoke('compile:pdf', req)
+    pdf: (req) => ipcRenderer.invoke('compile:pdf', req),
+    epub: (req) => ipcRenderer.invoke('compile:epub', req)
   },
   importer: {
     file: (parentId) => ipcRenderer.invoke('import:file', parentId)

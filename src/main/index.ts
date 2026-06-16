@@ -64,10 +64,10 @@ app.whenReady().then(() => {
   if (process.env['WP_SELFTEST']) {
     import('./selftest')
       .then((m) => m.runSelfTest())
-      .then(() => app.exit(0))
+      .then(() => setTimeout(() => app.exit(0), 300)) // let stdout flush before exit
       .catch((err) => {
         console.error('SELFTEST_FAILED:', err)
-        app.exit(1)
+        setTimeout(() => app.exit(1), 300)
       })
     return
   }
@@ -127,6 +127,9 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // During the headless self-test no main window is open, and the transient
+  // offscreen PDF window would otherwise trigger a quit mid-run.
+  if (process.env['WP_SELFTEST']) return
   if (process.platform !== 'darwin') app.quit()
 })
 

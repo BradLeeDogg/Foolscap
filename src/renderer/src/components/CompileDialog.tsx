@@ -92,6 +92,19 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
     }
   }
 
+  const exportEpub = async (): Promise<void> => {
+    setBusy(true)
+    setStatus('Compiling ePub…')
+    try {
+      const res = await window.api.compile.epub(request())
+      setStatus(res ? `Exported ${res.epubPath}` : null)
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal compile" onClick={(e) => e.stopPropagation()}>
@@ -242,6 +255,9 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
           {status && <span className="compile-status muted">{status}</span>}
           <span className="spacer" />
           <button onClick={onClose}>Close</button>
+          <button disabled={busy || docCount === 0} onClick={exportEpub}>
+            Export ePub
+          </button>
           <button disabled={busy || docCount === 0} onClick={exportPdf}>
             Export PDF
           </button>

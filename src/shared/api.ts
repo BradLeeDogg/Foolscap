@@ -160,6 +160,8 @@ export interface WProcessorAPI {
     docx(req: CompileRequest): Promise<{ docxPath: string; packetPath: string | null } | null>
     /** Build a manuscript .pdf (save dialog). Returns path, or null if cancelled. */
     pdf(req: CompileRequest): Promise<{ pdfPath: string } | null>
+    /** Build an .epub (save dialog). Returns path, or null if cancelled. */
+    epub(req: CompileRequest): Promise<{ epubPath: string } | null>
   }
   importer: {
     /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document. */

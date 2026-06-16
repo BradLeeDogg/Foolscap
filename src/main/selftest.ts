@@ -12,13 +12,15 @@ import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
 import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
-import { compileToDocxBuffer, compileToPdfBuffer } from './services/compile'
+import { compileToDocxBuffer, compileToEpubBuffer, compileToPdfBuffer } from './services/compile'
 import { htmlToProseMirror, markdownToProseMirror } from './services/importer'
 import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
 
+const log: string[] = []
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(`ASSERT FAILED: ${msg}`)
+  log.push(`  ✓ ${msg}`)
   console.log(`  ✓ ${msg}`)
 }
 
@@ -27,6 +29,19 @@ function assert(cond: unknown, msg: string): void {
  * the Electron main runtime. Run with WP_SELFTEST=1. Not part of the shipped app.
  */
 export async function runSelfTest(): Promise<void> {
+  const resultFile = process.env['WP_SELFTEST_OUT'] || join(tmpdir(), 'wp-selftest.log')
+  try {
+    await runChecks()
+    log.push(`SELFTEST_OK (${log.length} assertions)`)
+  } catch (err) {
+    log.push(`SELFTEST_FAILED: ${err instanceof Error ? err.message : String(err)}`)
+    await fs.writeFile(resultFile, log.join('\n')).catch(() => undefined)
+    throw err
+  }
+  await fs.writeFile(resultFile, log.join('\n')).catch(() => undefined)
+}
+
+async function runChecks(): Promise<void> {
   const loc = await fs.mkdtemp(join(tmpdir(), 'wp-selftest-'))
   console.log('Self-test workspace:', loc)
 
@@ -147,6 +162,17 @@ export async function runSelfTest(): Promise<void> {
     includeFactCheck: false
   })
   assert(pdf.length > 500 && pdf.subarray(0, 5).toString() === '%PDF-', 'compiled PDF has a %PDF header')
+
+  const epub = await compileToEpubBuffer(paths.root, {
+    entries: [{ heading: 'Chapter One' }, { docId: doc.id }],
+    preset: COMPILE_PRESETS.shunn,
+    meta: { title: 'Test Novel', author: 'A. Writer', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  })
+  assert(
+    epub.length > 500 && epub[0] === 0x50 && epub[1] === 0x4b && epub.includes('application/epub+zip'),
+    'compiled ePub is a zip declaring the epub mimetype'
+  )
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')
   assert(

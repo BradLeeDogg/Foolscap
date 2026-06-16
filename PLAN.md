@@ -96,8 +96,8 @@ MyNovel.writeproject/
 - [x] Export: PDF (Electron printToPDF; title page, chapter breaks, endnotes)
 - [x] Fact-check packet export alongside the manuscript (.txt)
 - [x] Import: DOCX (mammoth), Markdown, RTF, TXT → new document
+- [x] Export: ePub (EPUB 3, hand-rolled via archiver; KDP-suitable)
 - [ ] Import: Scrivener .scriv (best-effort) — DEFERRED (fiddly; documented)
-- [ ] Export: ePub (KDP) — DEFERRED (spec allows following later)
 
 ### M6+ — Later (explicitly out of v1)
 - [ ] Screenplay/stage mode (Courier, Fountain underlying)

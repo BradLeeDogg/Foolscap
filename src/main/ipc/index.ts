@@ -19,7 +19,7 @@ import { createCollection, listCollections, removeCollection } from '../services
 import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
 import * as factcheck from '../services/factcheck'
-import { compileToDocxFile, compileToPdfFile } from '../services/compile'
+import { compileToDocxFile, compileToEpubFile, compileToPdfFile } from '../services/compile'
 import { importFromFile } from '../services/importer'
 import { writeFileAtomic } from '../services/atomic'
 import { extname } from 'path'
@@ -363,6 +363,18 @@ export function registerIpc(): void {
     if (res.canceled || !res.filePath) return null
     await compileToPdfFile(paths.root, req, res.filePath)
     return { pdfPath: res.filePath }
+  })
+
+  ipcMain.handle('compile:epub', async (_e, req: CompileRequest) => {
+    const { paths } = projectService.requireCurrent()
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export as ePub',
+      defaultPath: join(app.getPath('documents'), `${req.meta.title || 'Manuscript'}.epub`),
+      filters: [{ name: 'ePub', extensions: ['epub'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await compileToEpubFile(paths.root, req, res.filePath)
+    return { epubPath: res.filePath }
   })
 
   // --- import ---------------------------------------------------------------
