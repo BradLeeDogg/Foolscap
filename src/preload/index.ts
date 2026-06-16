@@ -87,7 +87,11 @@ const api: WProcessorAPI = {
     outstanding: () => ipcRenderer.invoke('factcheck:outstanding')
   },
   compile: {
-    docx: (req) => ipcRenderer.invoke('compile:docx', req)
+    docx: (req) => ipcRenderer.invoke('compile:docx', req),
+    pdf: (req) => ipcRenderer.invoke('compile:pdf', req)
+  },
+  importer: {
+    file: (parentId) => ipcRenderer.invoke('import:file', parentId)
   }
 }
 

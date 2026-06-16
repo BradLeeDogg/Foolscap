@@ -58,21 +58,33 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
   const entries = useMemo(() => buildEntries(tree, rootId), [tree, rootId])
   const docCount = entries.filter((e) => e.docId).length
 
+  const request = (): Parameters<typeof window.api.compile.docx>[0] => ({
+    entries,
+    preset,
+    meta: { title, author, contact, keyword, byline, dateline },
+    includeFactCheck
+  })
+
   const exportDocx = async (): Promise<void> => {
     setBusy(true)
-    setStatus('Compiling…')
+    setStatus('Compiling DOCX…')
     try {
-      const res = await window.api.compile.docx({
-        entries,
-        preset,
-        meta: { title, author, contact, keyword, byline, dateline },
-        includeFactCheck
-      })
+      const res = await window.api.compile.docx(request())
       if (!res) setStatus(null)
-      else
-        setStatus(
-          `Exported ${res.docxPath}${res.packetPath ? ` (+ fact-check packet)` : ''}`
-        )
+      else setStatus(`Exported ${res.docxPath}${res.packetPath ? ' (+ fact-check packet)' : ''}`)
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const exportPdf = async (): Promise<void> => {
+    setBusy(true)
+    setStatus('Compiling PDF…')
+    try {
+      const res = await window.api.compile.pdf(request())
+      setStatus(res ? `Exported ${res.pdfPath}` : null)
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -230,6 +242,9 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
           {status && <span className="compile-status muted">{status}</span>}
           <span className="spacer" />
           <button onClick={onClose}>Close</button>
+          <button disabled={busy || docCount === 0} onClick={exportPdf}>
+            Export PDF
+          </button>
           <button className="primary" disabled={busy || docCount === 0} onClick={exportDocx}>
             Export DOCX
           </button>

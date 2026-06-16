@@ -158,5 +158,11 @@ export interface WProcessorAPI {
   compile: {
     /** Build a manuscript .docx (save dialog). Returns paths, or null if cancelled. */
     docx(req: CompileRequest): Promise<{ docxPath: string; packetPath: string | null } | null>
+    /** Build a manuscript .pdf (save dialog). Returns path, or null if cancelled. */
+    pdf(req: CompileRequest): Promise<{ pdfPath: string } | null>
+  }
+  importer: {
+    /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document. */
+    file(parentId: string | null): Promise<{ item: BinderItem; tree: BinderItem[] } | null>
   }
 }

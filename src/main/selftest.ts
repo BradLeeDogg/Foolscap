@@ -12,7 +12,8 @@ import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
 import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
-import { compileToDocxBuffer } from './services/compile'
+import { compileToDocxBuffer, compileToPdfBuffer } from './services/compile'
+import { htmlToProseMirror, markdownToProseMirror } from './services/importer'
 import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
 
@@ -138,6 +139,26 @@ export async function runSelfTest(): Promise<void> {
     includeFactCheck: false
   })
   assert(docx.length > 1000 && docx[0] === 0x50 && docx[1] === 0x4b, 'compiled DOCX is a valid zip (PK)')
+
+  const pdf = await compileToPdfBuffer(paths.root, {
+    entries: [{ docId: doc.id }],
+    preset: COMPILE_PRESETS.shunn,
+    meta: { title: 'Test Novel', author: 'A. Writer', contact: 'a@example.com', keyword: 'TEST', byline: '', dateline: '' },
+    includeFactCheck: false
+  })
+  assert(pdf.length > 500 && pdf.subarray(0, 5).toString() === '%PDF-', 'compiled PDF has a %PDF header')
+
+  const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')
+  assert(
+    fromHtml.doc.content?.[0]?.type === 'heading' && fromHtml.doc.content?.[1]?.type === 'paragraph',
+    'HTML/DOCX import yields heading + paragraph'
+  )
+  const fromMd = markdownToProseMirror('# Title\n\nHello **world**')
+  const mdPara = fromMd.doc.content?.[1]
+  assert(
+    !!mdPara?.content?.some((r) => r.marks?.some((m) => m.type === 'bold')),
+    'Markdown import parses bold'
+  )
 
   const savedPath = res.meta.path
   await projectService.close()

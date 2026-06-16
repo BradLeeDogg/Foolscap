@@ -89,13 +89,15 @@ MyNovel.writeproject/
 - [x] Fact-check packet (claims tied to sources; verified/needs-sourcing/disputed; outstanding list; quote-vs-audio flags)
 - [ ] Export the fact-check packet alongside the manuscript → with Compile (M5)
 
-### M5 — Phase 5: Compile, Export & Import
+### M5 — Phase 5: Compile, Export & Import  ✅ (ePub + .scriv deferred)
 - [x] Compile tool (assemble in binder order; apply layout; non-destructive)
 - [x] Presets (editable): Shunn fiction, nonfiction proposal, journalism, dissertation/academic
 - [x] Export: DOCX (title page, chapter headings, running header, footnotes, scene breaks)
+- [x] Export: PDF (Electron printToPDF; title page, chapter breaks, endnotes)
 - [x] Fact-check packet export alongside the manuscript (.txt)
-- [ ] Export: PDF (Electron printToPDF) — M5b
-- [ ] Import: DOCX (mammoth), Markdown, RTF; then Scrivener .scriv — M5b
+- [x] Import: DOCX (mammoth), Markdown, RTF, TXT → new document
+- [ ] Import: Scrivener .scriv (best-effort) — DEFERRED (fiddly; documented)
+- [ ] Export: ePub (KDP) — DEFERRED (spec allows following later)
 
 ### M6+ — Later (explicitly out of v1)
 - [ ] Screenplay/stage mode (Courier, Fountain underlying)

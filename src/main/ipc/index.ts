@@ -19,7 +19,8 @@ import { createCollection, listCollections, removeCollection } from '../services
 import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
 import * as factcheck from '../services/factcheck'
-import { compileToDocxFile } from '../services/compile'
+import { compileToDocxFile, compileToPdfFile } from '../services/compile'
+import { importFromFile } from '../services/importer'
 import { writeFileAtomic } from '../services/atomic'
 import { extname } from 'path'
 import type {
@@ -350,5 +351,36 @@ export function registerIpc(): void {
       await writeFileAtomic(packetPath, factCheckPacketText(db))
     }
     return { docxPath: res.filePath, packetPath }
+  })
+
+  ipcMain.handle('compile:pdf', async (_e, req: CompileRequest) => {
+    const { paths } = projectService.requireCurrent()
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export manuscript as PDF',
+      defaultPath: join(app.getPath('documents'), `${req.meta.title || 'Manuscript'}.pdf`),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await compileToPdfFile(paths.root, req, res.filePath)
+    return { pdfPath: res.filePath }
+  })
+
+  // --- import ---------------------------------------------------------------
+  ipcMain.handle('import:file', async (_e, parentId: string | null) => {
+    const { db, paths } = projectService.requireCurrent()
+    const res = await dialog.showOpenDialog(focusedWindow()!, {
+      title: 'Import a document',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Documents', extensions: ['docx', 'md', 'markdown', 'rtf', 'txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (res.canceled || !res.filePaths[0]) return null
+    const { title, content } = await importFromFile(res.filePaths[0])
+    const item = binder.createItem(db, { type: 'document', title, parentId })
+    await writeDocument(paths.root, item.id, content)
+    binder.setWordCount(db, item.id, countWords(content))
+    return { item, tree: binder.listBinder(db) }
   })
 }
