@@ -580,6 +580,96 @@ fieldset.field {
   text-decoration: line-through;
 }
 
+/* proofreader squiggles */
+.manuscript .pf {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 2px;
+}
+.manuscript .pf-dialect {
+  text-decoration-color: #c9a227;
+}
+.manuscript .pf-oxford {
+  text-decoration-color: #2b7bb9;
+}
+.manuscript .pf-repeat,
+.manuscript .pf-spacing {
+  text-decoration-color: #b00020;
+}
+
+/* proofreader panel */
+.pf-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pf-seg {
+  display: flex;
+  gap: 4px;
+}
+.pf-seg button {
+  flex: 1;
+}
+.pf-seg button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pf-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+.pf-summary {
+  padding: 4px 12px;
+  font-size: 0.76rem;
+}
+.pf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.pf-item {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.pf-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pf-chip {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-faint);
+}
+.pf-jump {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding: 1px 8px;
+}
+.pf-fix {
+  font-size: 0.72rem;
+  padding: 1px 8px;
+  color: var(--accent);
+}
+.pf-msg {
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+.pf-note {
+  font-size: 0.7rem;
+  padding: 8px 12px 0;
+}
+
 /* comment mark + footnote marker inside the manuscript */
 .manuscript .ProseMirror {
   counter-reset: footnote;

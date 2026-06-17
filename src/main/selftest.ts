@@ -21,6 +21,8 @@ import {
 } from './services/compile'
 import { cycleElement, enterElement, SCREENPLAY_ELEMENTS } from '@shared/screenplay'
 import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/trackchanges'
+import { proofread, type Issue } from '@shared/proofreader'
+import { AME_TO_BRE, BRE_TO_AME } from '@shared/dialect'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
@@ -456,6 +458,72 @@ async function runChecks(): Promise<void> {
     const upd = updateSource(cdb, made.id, { author: 'Doe, John', year: '1999' })
     assert(upd?.author === 'Doe, John' && upd?.year === '1999', 'updateSource persists citation metadata')
   }
+
+  // Proofreader: dialect, Oxford comma, repeats, spacing.
+  const applyIssue = (t: string, is: Issue): string => t.slice(0, is.start) + is.replacement + t.slice(is.end)
+  assert(
+    AME_TO_BRE['color'] === 'colour' && BRE_TO_AME['colour'] === 'color',
+    'dialect map inverts (color↔colour)'
+  )
+  const br = proofread('The color of honor.', { dialect: 'british', oxfordComma: true })
+  assert(
+    br.some((i) => i.rule === 'dialect' && i.replacement === 'colour') &&
+      br.some((i) => i.replacement === 'honour'),
+    'British mode flags American spellings'
+  )
+  assert(
+    proofread('The colour of honour.', { dialect: 'american', oxfordComma: true }).some(
+      (i) => i.replacement === 'color'
+    ),
+    'American mode flags British spellings'
+  )
+  assert(
+    proofread('color', { dialect: 'american', oxfordComma: true }).length === 0,
+    'American mode does not flag American spelling'
+  )
+  assert(
+    proofread('Color', { dialect: 'british', oxfordComma: true })[0]?.replacement === 'Colour',
+    'capitalization is preserved in the suggestion'
+  )
+  const ox = proofread('I bought apples, oranges and pears.', { dialect: 'american', oxfordComma: true })
+  const oxi = ox.find((i) => i.rule === 'oxford')
+  assert(!!oxi, 'flags a missing Oxford comma in a list')
+  assert(
+    applyIssue('I bought apples, oranges and pears.', oxi!) === 'I bought apples, oranges, and pears.',
+    'Oxford fix inserts the comma in the right place'
+  )
+  assert(
+    proofread('We ate, talked, and left.', { dialect: 'american', oxfordComma: true }).every(
+      (i) => i.rule !== 'oxford'
+    ),
+    'no Oxford flag when the serial comma is already present'
+  )
+  assert(
+    proofread('After lunch, we walked and talked.', { dialect: 'american', oxfordComma: true }).every(
+      (i) => i.rule !== 'oxford'
+    ),
+    'no false Oxford flag on an intro clause + compound predicate'
+  )
+  assert(
+    proofread('Buy milk, eggs and bread.', { dialect: 'american', oxfordComma: false }).every(
+      (i) => i.rule !== 'oxford'
+    ),
+    'Oxford check respects the toggle'
+  )
+  assert(
+    proofread('the the end', { dialect: 'american', oxfordComma: false }).some((i) => i.rule === 'repeat'),
+    'flags a doubled word'
+  )
+  assert(
+    proofread('I think that that idea', { dialect: 'american', oxfordComma: false }).every(
+      (i) => i.rule !== 'repeat'
+    ),
+    'allows legitimately doubled "that that"'
+  )
+  assert(
+    proofread('Hello ,world', { dialect: 'american', oxfordComma: false }).some((i) => i.rule === 'spacing'),
+    'flags a space before punctuation'
+  )
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')
   assert(

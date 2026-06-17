@@ -12,6 +12,7 @@ import Inspector from './Inspector'
 import SourcesPanel from './SourcesPanel'
 import FactCheckPanel from './FactCheckPanel'
 import TranscriptsPanel from './TranscriptsPanel'
+import ProofreaderPanel from './ProofreaderPanel'
 import CompileDialog from './CompileDialog'
 import SettingsDialog from './SettingsDialog'
 import CompositionMode from './CompositionMode'
@@ -54,6 +55,7 @@ export default function Workspace(): JSX.Element {
   // Journalism types open the fact-check packet by default.
   const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
   const [showTranscripts, setShowTranscripts] = useState(false)
+  const [showProof, setShowProof] = useState(false)
   const [showCompile, setShowCompile] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showQuickOpen, setShowQuickOpen] = useState(false)
@@ -71,6 +73,11 @@ export default function Workspace(): JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Keep Chromium's spell-check dictionary in sync with the project's dialect.
+  useEffect(() => {
+    void window.api.spellcheck.setDialect(meta?.settings.english === 'british' ? 'british' : 'american')
+  }, [meta?.settings.english])
 
   const handleClose = async (): Promise<void> => {
     await window.api.project.close()
@@ -157,6 +164,9 @@ export default function Workspace(): JSX.Element {
             onClick={() => setShowTranscripts((v) => !v)}
           >
             Transcripts
+          </button>
+          <button className={showProof ? 'on' : ''} onClick={() => setShowProof((v) => !v)}>
+            Proofread
           </button>
           <button className={showTargets ? 'on' : ''} onClick={() => setShowTargets((v) => !v)}>
             Targets
@@ -247,6 +257,14 @@ export default function Workspace(): JSX.Element {
               <PanelResizeHandle className="resize-handle" />
               <Panel id="transcripts" order={10} defaultSize={30} minSize={22} maxSize={48} className="pane">
                 <TranscriptsPanel onClose={() => setShowTranscripts(false)} />
+              </Panel>
+            </>
+          )}
+          {showProof && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="proofread" order={11} defaultSize={26} minSize={18} maxSize={42} className="pane">
+                <ProofreaderPanel onClose={() => setShowProof(false)} />
               </Panel>
             </>
           )}

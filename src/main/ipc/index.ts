@@ -1,4 +1,4 @@
-import { app, clipboard, dialog, ipcMain, BrowserWindow } from 'electron'
+import { app, clipboard, dialog, ipcMain, session, BrowserWindow } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import type {
@@ -332,6 +332,11 @@ export function registerIpc(): void {
   // --- clipboard (rich copy: keeps italics when pasted into the editor/Word) --
   ipcMain.handle('clipboard:write', (_e, text: string, html: string) => {
     clipboard.write({ text, html })
+  })
+
+  // --- spell-check dialect (Chromium's en-US / en-GB dictionaries) -----------
+  ipcMain.handle('spellcheck:setDialect', (_e, dialect: 'american' | 'british') => {
+    session.defaultSession.setSpellCheckerLanguages([dialect === 'british' ? 'en-GB' : 'en-US'])
   })
 
   // --- interview transcripts ------------------------------------------------

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { BinderItem, ProjectMeta } from '@shared/types'
 import type { LabelDef, OpenProjectResult } from '@shared/api'
+import type { DocIssue } from '@shared/proofreader'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 export type FolderView = 'scrivenings' | 'corkboard' | 'outliner'
@@ -36,6 +37,15 @@ interface AppState {
   /** Insert content (plain text or HTML) at the cursor of the last-focused editor. */
   inserter: ((content: string) => boolean) | null
   setInserter: (fn: ((content: string) => boolean) | null) => void
+  /** Proofreading issues for the active document + fix/jump bridges to its editor. */
+  proofIssues: DocIssue[]
+  proofApply: ((from: number, to: number, replacement: string) => void) | null
+  proofFocus: ((from: number, to: number) => void) | null
+  setProof: (
+    issues: DocIssue[],
+    apply: ((from: number, to: number, replacement: string) => void) | null,
+    focus: ((from: number, to: number) => void) | null
+  ) => void
   setSplit: (id: string | null) => void
   setComposition: (on: boolean) => void
   /** Update one item's cached word count (after a save) so totals stay live. */
@@ -78,6 +88,9 @@ export const useStore = create<AppState>((set) => ({
   docWordCount: 0,
   selectionWordCount: 0,
   inserter: null,
+  proofIssues: [],
+  proofApply: null,
+  proofFocus: null,
   splitId: null,
   composition: false,
   sessionStartWords: 0,
@@ -119,6 +132,8 @@ export const useStore = create<AppState>((set) => ({
   setDocWordCount: (n) => set({ docWordCount: n }),
   setSelectionWordCount: (n) => set({ selectionWordCount: n }),
   setInserter: (fn) => set({ inserter: fn }),
+  setProof: (issues, apply, focus) =>
+    set({ proofIssues: issues, proofApply: apply, proofFocus: focus }),
   setSplit: (id) => set({ splitId: id }),
   setComposition: (on) => set({ composition: on }),
   setItemWordCount: (id, n) =>

@@ -13,6 +13,8 @@ import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
 import { Screenplay } from '../editor/screenplay'
 import { Deletion, Insertion, TrackChanges, hasTrackedChanges } from '../editor/trackchanges'
+import { Proofreader, getProofIssues } from '../editor/proofreader'
+import type { ProofOptions } from '@shared/proofreader'
 import { listComments, listFootnotes } from '../editor/annotations'
 import { playKeyClick } from '../lib/typewriter'
 import AnnotationsPanel from './AnnotationsPanel'
@@ -77,6 +79,9 @@ export default function DocumentEditor({
   const [atChange, setAtChange] = useState(false)
   const suggestingRef = useRef(false)
   const setInserter = useStore((s) => s.setInserter)
+  const setProof = useStore((s) => s.setProof)
+  const english = useStore((s) => s.meta?.settings.english)
+  const oxfordComma = useStore((s) => s.meta?.settings.oxfordComma)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -93,6 +98,7 @@ export default function DocumentEditor({
       Insertion,
       Deletion,
       TrackChanges,
+      Proofreader,
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
@@ -119,6 +125,7 @@ export default function DocumentEditor({
       saveTimer.current = setTimeout(() => void save(), debounceMs)
       if (spModeRef.current) setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
       setAtChange(editor.isActive('insertion') || editor.isActive('deletion'))
+      pushProof()
       centerCaret()
     },
     onSelectionUpdate: ({ editor }) => {
@@ -141,6 +148,26 @@ export default function DocumentEditor({
       })
     }
   })
+
+  const proofOpts = (): ProofOptions => ({
+    dialect: english === 'british' ? 'british' : 'american',
+    oxfordComma: oxfordComma !== false
+  })
+  // Only the active editor feeds the Proofreader panel (split/scrivenings still
+  // get squiggles, but don't fight over the shared issue list).
+  const pushProof = (): void => {
+    if (!active || !editor || editor.isDestroyed) return
+    setProof(
+      getProofIssues(editor.state),
+      (from, to, repl) => {
+        if (!editor.isDestroyed) editor.chain().focus().insertContentAt({ from, to }, repl).run()
+      },
+      (from, to) => {
+        if (!editor.isDestroyed)
+          editor.chain().setTextSelection({ from, to }).scrollIntoView().focus().run()
+      }
+    )
+  }
 
   const centerCaret = (): void => {
     if (!typewriter || !editor || !scrollRef.current) return
@@ -192,6 +219,8 @@ export default function DocumentEditor({
       editor.commands.setScreenplayEnabled(on)
       setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
       editor.commands.setSuggesting(suggestingRef.current)
+      editor.commands.setProofreadOptions(proofOpts())
+      pushProof()
       setHasChanges(content ? hasTrackedChanges(content.doc) : false)
       dirtyRef.current = false
       const words = editor.storage.characterCount.words()
@@ -209,6 +238,14 @@ export default function DocumentEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, editor])
+
+  // Re-proofread when the dialect / Oxford-comma preference changes.
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setProofreadOptions(proofOpts())
+    pushProof()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [english, oxfordComma, editor, active])
 
   const scheduleSave = (): void => {
     dirtyRef.current = true

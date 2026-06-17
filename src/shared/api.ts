@@ -238,6 +238,10 @@ export interface WProcessorAPI {
     /** Write rich content so a paste keeps italics (into the editor or Word). */
     write(text: string, html: string): Promise<void>
   }
+  spellcheck: {
+    /** Switch Chromium's spell-check dictionary between US and UK English. */
+    setDialect(dialect: 'american' | 'british'): Promise<void>
+  }
   transcript: {
     list(): Promise<Transcript[]>
     get(id: string): Promise<TranscriptWithSegments | null>

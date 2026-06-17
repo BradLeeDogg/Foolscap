@@ -48,6 +48,8 @@ function defaultSettings(type: ProjectType): ProjectSettings {
     factCheckEnabled: factCheckDefault(type),
     theme: 'paper',
     typewriterSound: false,
+    english: 'american',
+    oxfordComma: true,
     autosaveDebounceMs: 800,
     backupIntervalMs: 15 * 60 * 1000,
     maxAutomaticBackups: 25,

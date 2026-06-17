@@ -80,6 +80,9 @@ const api: WProcessorAPI = {
   clipboard: {
     write: (text, html) => ipcRenderer.invoke('clipboard:write', text, html)
   },
+  spellcheck: {
+    setDialect: (dialect) => ipcRenderer.invoke('spellcheck:setDialect', dialect)
+  },
   transcript: {
     list: () => ipcRenderer.invoke('transcript:list'),
     get: (id) => ipcRenderer.invoke('transcript:get', id),

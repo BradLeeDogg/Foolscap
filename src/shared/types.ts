@@ -74,6 +74,10 @@ export interface ProjectSettings {
   factCheckEnabled: boolean
   theme: 'paper' | 'dark'
   typewriterSound: boolean
+  /** Proofreading dialect (drives spell-check dictionary + style checks). */
+  english?: 'american' | 'british'
+  /** Enforce the Oxford/serial comma (applies in both dialects). */
+  oxfordComma?: boolean
   autosaveDebounceMs: number
   backupIntervalMs: number
   maxAutomaticBackups: number
