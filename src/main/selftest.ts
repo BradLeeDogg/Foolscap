@@ -13,7 +13,8 @@ import { createCollection, listCollections, removeCollection } from './services/
 import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
 import { compileToDocxBuffer, compileToEpubBuffer, compileToPdfBuffer } from './services/compile'
-import { htmlToProseMirror, markdownToProseMirror } from './services/importer'
+import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
+import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
 
@@ -184,6 +185,25 @@ async function runChecks(): Promise<void> {
   assert(
     !!mdPara?.content?.some((r) => r.marks?.some((m) => m.type === 'bold')),
     'Markdown import parses bold'
+  )
+
+  // Minimal Scrivener project fixture (best-effort import).
+  const scrivDir = join(loc, 'Demo.scriv')
+  await fs.mkdir(join(scrivDir, 'Files', 'Data', 'BBB'), { recursive: true })
+  await fs.writeFile(
+    join(scrivDir, 'Demo.scrivx'),
+    '<?xml version="1.0"?><ScrivenerProject><Binder>' +
+      '<BinderItem UUID="AAA" Type="DraftFolder"><Title>Manuscript</Title><Children>' +
+      '<BinderItem UUID="BBB" Type="Text"><Title>Scene One</Title></BinderItem>' +
+      '</Children></BinderItem></Binder></ScrivenerProject>'
+  )
+  await fs.writeFile(join(scrivDir, 'Files', 'Data', 'BBB', 'content.rtf'), '{\\rtf1\\ansi Hello from Scrivener.\\par}')
+  const scriv = await parseScrivener(scrivDir)
+  assert(scriv.length === 1 && scriv[0]!.type === 'folder' && scriv[0]!.title === 'Manuscript', 'scrivener binder parsed (folder)')
+  const scrivChild = scriv[0]!.children?.[0]
+  assert(
+    scrivChild?.type === 'document' && /Hello from Scrivener/.test(extractPlainText(scrivChild.content!)),
+    'scrivener document text imported'
   )
 
   const savedPath = res.meta.path

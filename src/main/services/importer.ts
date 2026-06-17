@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs'
-import { basename, extname } from 'path'
+import { basename, extname, join } from 'path'
 import { JSDOM } from 'jsdom'
 import mammoth from 'mammoth'
 import type { DocumentContent, ProseMirrorNode } from '@shared/types'
@@ -134,6 +134,78 @@ function textToProseMirror(text: string): DocumentContent {
     .filter(Boolean)
     .map((p) => ({ type: 'paragraph', content: [{ type: 'text', text: p }] }) as ProseMirrorNode)
   return wrap(content)
+}
+
+// --- Scrivener .scriv (best-effort) -----------------------------------------
+
+export interface ScrivNode {
+  title: string
+  type: 'folder' | 'document'
+  synopsis?: string
+  content?: DocumentContent
+  children?: ScrivNode[]
+}
+
+async function readFirst(paths: string[]): Promise<string | null> {
+  for (const p of paths) {
+    try {
+      return await fs.readFile(p, 'utf8')
+    } catch {
+      /* try next */
+    }
+  }
+  return null
+}
+
+/**
+ * Parse a Scrivener project folder into a binder subtree. Best-effort:
+ * structure + titles + synopses + document *text* are imported; rich
+ * formatting, labels/keywords, snapshots, and images are not (see docs).
+ */
+export async function parseScrivener(scrivDir: string): Promise<ScrivNode[]> {
+  const entries = await fs.readdir(scrivDir)
+  const scrivx = entries.find((e) => e.endsWith('.scrivx'))
+  if (!scrivx) throw new Error('No .scrivx file found — is this a Scrivener project folder?')
+  const xml = await fs.readFile(join(scrivDir, scrivx), 'utf8')
+  const { window } = new JSDOM()
+  const doc = new window.DOMParser().parseFromString(xml, 'application/xml')
+  const binder = doc.querySelector('Binder')
+  if (!binder) return []
+
+  const contentFor = async (id: string): Promise<DocumentContent> => {
+    const rtf = await readFirst([
+      join(scrivDir, 'Files', 'Data', id, 'content.rtf'),
+      join(scrivDir, 'Files', 'Docs', `${id}.rtf`)
+    ])
+    return rtf ? textToProseMirror(rtfToText(rtf)) : wrap([])
+  }
+  const synopsisFor = async (id: string): Promise<string> => {
+    const txt = await readFirst([join(scrivDir, 'Files', 'Data', id, 'synopsis.txt')])
+    return (txt ?? '').trim()
+  }
+
+  const walk = async (parent: Element): Promise<ScrivNode[]> => {
+    const out: ScrivNode[] = []
+    for (const item of Array.from(parent.children)) {
+      if (item.tagName !== 'BinderItem') continue
+      const type = item.getAttribute('Type') ?? ''
+      if (/Trash/i.test(type)) continue
+      const id = item.getAttribute('UUID') ?? item.getAttribute('ID') ?? ''
+      const title = item.querySelector(':scope > Title')?.textContent?.trim() || 'Untitled'
+      const childrenEl = item.querySelector(':scope > Children')
+      const isFolder = /Folder/i.test(type) || !!childrenEl
+      const node: ScrivNode = { title, type: isFolder ? 'folder' : 'document' }
+      if (!isFolder && id) {
+        node.content = await contentFor(id)
+        node.synopsis = await synopsisFor(id)
+      }
+      if (childrenEl) node.children = await walk(childrenEl)
+      out.push(node)
+    }
+    return out
+  }
+
+  return walk(binder)
 }
 
 // --- dispatch ---------------------------------------------------------------

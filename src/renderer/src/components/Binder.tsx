@@ -84,6 +84,14 @@ export default function Binder(): JSX.Element {
     }
   }
 
+  const importScriv = async (): Promise<void> => {
+    const res = await window.api.importer.scrivener(newItemParent())
+    if (res) {
+      setTree(res.tree)
+      select(res.rootId)
+    }
+  }
+
   const removeItem = async (item: BinderItem): Promise<void> => {
     const ok = window.confirm(
       `Delete “${item.title}”${item.type === 'folder' ? ' and everything inside it' : ''}? This can be recovered from a backup, but not undone here.`
@@ -139,6 +147,9 @@ export default function Binder(): JSX.Element {
         </button>
         <button title="Import DOCX / Markdown / RTF / TXT" onClick={importDoc}>
           ⤓
+        </button>
+        <button title="Import Scrivener project (.scriv)" onClick={importScriv}>
+          ⇲
         </button>
         <span className="spacer" />
         {selectedItem && (

@@ -166,5 +166,9 @@ export interface WProcessorAPI {
   importer: {
     /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document. */
     file(parentId: string | null): Promise<{ item: BinderItem; tree: BinderItem[] } | null>
+    /** Pick a Scrivener .scriv folder and import its structure (best-effort). */
+    scrivener(
+      parentId: string | null
+    ): Promise<{ tree: BinderItem[]; imported: number; rootId: string } | null>
   }
 }

@@ -97,7 +97,12 @@ MyNovel.writeproject/
 - [x] Fact-check packet export alongside the manuscript (.txt)
 - [x] Import: DOCX (mammoth), Markdown, RTF, TXT → new document
 - [x] Export: ePub (EPUB 3, hand-rolled via archiver; KDP-suitable)
-- [ ] Import: Scrivener .scriv (best-effort) — DEFERRED (fiddly; documented)
+- [x] Import: Scrivener .scriv (best-effort) — structure + titles + synopses + document text
+
+**.scriv import limits (best-effort, by design):** imports the binder structure, item
+titles, synopses, and document *text* (RTF → plain text). Not imported: rich formatting,
+labels/keywords/custom metadata, snapshots, images, comments/footnotes. Handles Scrivener
+2 (`Files/Docs/<ID>.rtf`) and 3 (`Files/Data/<UUID>/content.rtf`) layouts; Trash is skipped.
 
 ### M6+ — Later (explicitly out of v1)
 - [ ] Screenplay/stage mode (Courier, Fountain underlying)
