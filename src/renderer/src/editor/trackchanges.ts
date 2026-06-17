@@ -1,4 +1,4 @@
-import { Extension, Mark } from '@tiptap/core'
+import { Extension, Mark, getMarkRange } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { ProseMirrorNode } from '@shared/types'
 import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/trackchanges'
@@ -34,8 +34,24 @@ declare module '@tiptap/core' {
       setSuggesting: (on: boolean) => ReturnType
       acceptAllChanges: () => ReturnType
       rejectAllChanges: () => ReturnType
+      /** Resolve only the tracked change under the cursor. */
+      acceptChange: () => ReturnType
+      rejectChange: () => ReturnType
     }
   }
+}
+
+/** The insertion/deletion run under the cursor, if any. */
+function changeAtCursor(
+  state: import('@tiptap/pm/state').EditorState
+): { name: 'insertion' | 'deletion'; from: number; to: number } | null {
+  for (const name of ['insertion', 'deletion'] as const) {
+    const type = state.schema.marks[name]
+    if (!type) continue
+    const range = getMarkRange(state.selection.$from, type)
+    if (range) return { name, from: range.from, to: range.to }
+  }
+  return null
 }
 
 export interface TrackChangesStorage {
@@ -77,7 +93,31 @@ export const TrackChanges = Extension.create<Record<string, never>, TrackChanges
           commands.setContent(
             rejectAllChanges(editor.getJSON() as unknown as ProseMirrorNode) as never,
             true
-          )
+          ),
+      acceptChange:
+        () =>
+        ({ state, tr, dispatch }) => {
+          const c = changeAtCursor(state)
+          if (!c) return false
+          // accept: keep insertions (drop the mark), remove deletions.
+          if (c.name === 'insertion') tr.removeMark(c.from, c.to, state.schema.marks.insertion!)
+          else tr.delete(c.from, c.to)
+          tr.setMeta('trackChanges', true)
+          dispatch?.(tr)
+          return true
+        },
+      rejectChange:
+        () =>
+        ({ state, tr, dispatch }) => {
+          const c = changeAtCursor(state)
+          if (!c) return false
+          // reject: remove insertions, keep originals (drop the deletion mark).
+          if (c.name === 'insertion') tr.delete(c.from, c.to)
+          else tr.removeMark(c.from, c.to, state.schema.marks.deletion!)
+          tr.setMeta('trackChanges', true)
+          dispatch?.(tr)
+          return true
+        }
     }
   },
 

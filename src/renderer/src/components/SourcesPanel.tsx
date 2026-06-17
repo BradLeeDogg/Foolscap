@@ -29,6 +29,7 @@ const EDIT_FIELDS: Array<[EditField, string]> = [
 /** The project's research library + a citation/bibliography generator. */
 export default function SourcesPanel({ onClose }: Props): JSX.Element {
   const meta = useStore((s) => s.meta)
+  const inserter = useStore((s) => s.inserter)
   const [sources, setSources] = useState<Source[]>([])
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -107,10 +108,18 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
     await window.api.clipboard.write(bib.text, bib.html)
     flash(`Copied ${bib.entries.length} ${CITATION_STYLE_LABELS[style]} entr${bib.entries.length === 1 ? 'y' : 'ies'}`)
   }
-  const copyInText = async (s: Source): Promise<void> => {
+  const insertBibliography = (): void => {
+    const bib = buildBibliography(sources, style)
+    if (inserter?.(bib.html)) flash(`Inserted ${bib.entries.length} entr${bib.entries.length === 1 ? 'y' : 'ies'}`)
+    else void copyBibliography()
+  }
+  const insertInText = (s: Source): void => {
     const t = inTextCitation(s, style)
-    await window.api.clipboard.write(t, t)
-    flash(`Copied ${t}`)
+    if (inserter?.(t)) flash(`Inserted ${t}`)
+    else {
+      void window.api.clipboard.write(t, t)
+      flash(`Copied ${t}`)
+    }
   }
 
   const bibliography = buildBibliography(sources, style)
@@ -195,7 +204,9 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
                 ))}
                 <div className="src-edit-foot">
                   <code className="src-intext">{inTextCitation(s, style)}</code>
-                  <button onClick={() => copyInText(s)}>Copy in-text</button>
+                  <button onClick={() => insertInText(s)} title="Insert at cursor (or copy)">
+                    Insert
+                  </button>
                 </div>
               </div>
             )}
@@ -214,6 +225,9 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
               </option>
             ))}
           </select>
+          <button disabled={!sources.length} onClick={insertBibliography} title="Insert at cursor">
+            Insert
+          </button>
           <button className="primary" disabled={!sources.length} onClick={copyBibliography}>
             Copy
           </button>

@@ -74,7 +74,9 @@ export default function DocumentEditor({
   const spModeRef = useRef(false)
   const [suggesting, setSuggesting] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [atChange, setAtChange] = useState(false)
   const suggestingRef = useRef(false)
+  const setInserter = useStore((s) => s.setInserter)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -116,6 +118,7 @@ export default function DocumentEditor({
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => void save(), debounceMs)
       if (spModeRef.current) setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
+      setAtChange(editor.isActive('insertion') || editor.isActive('deletion'))
       centerCaret()
     },
     onSelectionUpdate: ({ editor }) => {
@@ -126,7 +129,16 @@ export default function DocumentEditor({
         )
       }
       if (spModeRef.current) setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
+      setAtChange(editor.isActive('insertion') || editor.isActive('deletion'))
       centerCaret()
+    },
+    onFocus: ({ editor }) => {
+      // Last-focused editor becomes the target for inserts from side panels.
+      setInserter((content: string) => {
+        if (editor.isDestroyed) return false
+        editor.chain().focus().insertContent(content).run()
+        return true
+      })
     }
   })
 
@@ -229,10 +241,25 @@ export default function DocumentEditor({
   const acceptAll = (): void => {
     editor?.chain().focus().acceptAllChanges().run()
     setHasChanges(false)
+    setAtChange(false)
   }
   const rejectAll = (): void => {
     editor?.chain().focus().rejectAllChanges().run()
     setHasChanges(false)
+    setAtChange(false)
+  }
+  const afterResolveOne = (): void => {
+    if (!editor) return
+    setHasChanges(hasTrackedChanges(editor.getJSON() as unknown as ProseMirrorNode))
+    setAtChange(editor.isActive('insertion') || editor.isActive('deletion'))
+  }
+  const acceptOne = (): void => {
+    editor?.chain().focus().acceptChange().run()
+    afterResolveOne()
+  }
+  const rejectOne = (): void => {
+    editor?.chain().focus().rejectChange().run()
+    afterResolveOne()
   }
 
   const addComment = (): void => {
@@ -309,6 +336,17 @@ export default function DocumentEditor({
             {suggesting ? '● Suggesting' : 'Tracked changes'}
           </span>
           <span className="tc-spacer" />
+          {atChange && (
+            <>
+              <button onClick={acceptOne} title="Accept the change under the cursor">
+                ✓ This
+              </button>
+              <button onClick={rejectOne} title="Reject the change under the cursor">
+                ✗ This
+              </button>
+              <span className="tc-divider" />
+            </>
+          )}
           <button onClick={acceptAll} disabled={!hasChanges} title="Accept all changes">
             Accept all
           </button>

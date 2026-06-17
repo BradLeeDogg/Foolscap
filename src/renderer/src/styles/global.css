@@ -564,6 +564,12 @@ fieldset.field {
 .tc-spacer {
   margin-left: auto;
 }
+.tc-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--rule-strong);
+  margin: 0 3px;
+}
 .manuscript .tc-ins {
   color: #1a7f37;
   text-decoration: underline;
