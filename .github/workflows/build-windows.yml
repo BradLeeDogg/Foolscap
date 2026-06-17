@@ -1,0 +1,58 @@
+name: Build Windows installer
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ["claude/epic-archimedes-j9876k"]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Clean Windows runner: no corporate AV, so Electron's binary downloads and
+      # extracts normally. .npmrc still routes better-sqlite3 to its Electron prebuilt.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build main/preload/renderer
+        run: npm run build
+
+      - name: Package Windows installer (unsigned)
+        run: npx electron-builder --win --publish never
+
+      - name: Show build output
+        run: dir release
+        shell: cmd
+
+      - name: Upload installer as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WProcessor-Windows-installer
+          path: release/*.exe
+          if-no-files-found: error
+
+      # Also publish to a Release so there's a stable, click-to-download link.
+      - name: Publish installer to a Release
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: win-latest
+          name: WProcessor — latest Windows build
+          body: |
+            Unsigned Windows installer, built automatically on a clean Windows VM
+            from branch `claude/epic-archimedes-j9876k`.
+
+            Double-click `WProcessor-<version>-setup.exe` to install. Because it
+            isn't code-signed, Windows SmartScreen may warn — choose
+            **More info → Run anyway**.
+          files: release/*.exe
