@@ -29,7 +29,17 @@ export interface ManualSourceInput {
   url?: string | null
   locator?: string | null
   notes?: string
+  author?: string
+  container?: string
+  publisher?: string
+  year?: string
 }
+
+/** Editable source fields (incl. bibliographic metadata). */
+export type SourcePatch = Partial<
+  Pick<Source, 'title' | 'url' | 'locator' | 'notes' | 'author' | 'container' | 'publisher' | 'year'>
+>
+
 
 export type ClaimPatch = { text?: string; status?: ClaimStatus; needsQuoteCheck?: boolean }
 
@@ -221,6 +231,12 @@ export interface WProcessorAPI {
     /** Opens a file picker; returns the new source, or null if cancelled. */
     importFile(): Promise<Source | null>
     remove(id: string): Promise<Source[]>
+    /** Edit a source's fields (title, url, locator, notes, citation metadata). */
+    update(id: string, patch: SourcePatch): Promise<Source | null>
+  }
+  clipboard: {
+    /** Write rich content so a paste keeps italics (into the editor or Word). */
+    write(text: string, html: string): Promise<void>
   }
   transcript: {
     list(): Promise<Transcript[]>

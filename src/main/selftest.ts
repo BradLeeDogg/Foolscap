@@ -10,7 +10,8 @@ import { createSnapshot, listSnapshots, restoreSnapshot } from './services/snaps
 import { createBackup } from './services/backups'
 import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
-import { createSource, extractReadable, listSources } from './services/sources'
+import { createSource, extractReadable, listSources, updateSource } from './services/sources'
+import { buildBibliography, formatCitation, inTextCitation } from '@shared/citations'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
 import {
   compileToDocxBuffer,
@@ -34,7 +35,7 @@ import {
 } from './services/transcripts'
 import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
-import type { DocumentContent, ProseMirrorNode } from '@shared/types'
+import type { DocumentContent, ProseMirrorNode, Source } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 
 const log: string[] = []
@@ -406,6 +407,55 @@ async function runChecks(): Promise<void> {
     tcHtml.includes('added') && tcHtml.includes('tail') && !tcHtml.includes('removed'),
     'compiled export excludes deletion-marked text'
   )
+
+  // Citation generator: MLA / APA / Chicago formatting + sorting + service round-trip.
+  const webSrc: Source = {
+    id: 'c1', kind: 'web', title: 'The Great Article', url: 'https://example.com/a',
+    locator: '12-14', filePath: null, notes: '', author: 'Jane Smith',
+    container: 'Example News', publisher: '', year: '2023', createdAt: Date.UTC(2024, 2, 5, 12)
+  }
+  const bookSrc: Source = {
+    ...webSrc, id: 'c2', title: 'A Whole Book', url: null, locator: null, container: '',
+    publisher: 'Penguin', year: '2020', author: 'Adams, Amy'
+  }
+  const mlaWeb = formatCitation(webSrc, 'mla')
+  assert(
+    mlaWeb.text.startsWith('Smith, Jane.') &&
+      mlaWeb.text.includes('“The Great Article.”') &&
+      mlaWeb.text.includes('Example News') &&
+      mlaWeb.text.includes('Accessed'),
+    'MLA web entry: inverted author, quoted title, container, accessed date'
+  )
+  assert(mlaWeb.html.includes('<em>Example News</em>'), 'MLA italicizes the container, not the article title')
+  const apaWeb = formatCitation(webSrc, 'apa')
+  assert(
+    apaWeb.text.startsWith('Smith, J.') && apaWeb.text.includes('(2023).'),
+    'APA web entry: initials + (year)'
+  )
+  const mlaBook = formatCitation(bookSrc, 'mla')
+  assert(
+    mlaBook.html.includes('<em>A Whole Book</em>') && mlaBook.text.includes('Penguin, 2020.'),
+    'MLA book entry italicizes the title'
+  )
+  assert(
+    formatCitation(webSrc, 'chicago').text.includes('Accessed March 5, 2024'),
+    'Chicago web entry includes a spelled-out accessed date'
+  )
+  assert(inTextCitation(webSrc, 'mla') === '(Smith 12-14)', 'MLA in-text citation uses page')
+  assert(inTextCitation(webSrc, 'apa') === '(Smith, 2023)', 'APA in-text citation uses year')
+  const bib = buildBibliography([webSrc, bookSrc], 'mla')
+  assert(bib.heading === 'Works Cited', 'MLA bibliography heading is "Works Cited"')
+  assert(
+    bib.text.indexOf('Whole Book') < bib.text.indexOf('Great Article'),
+    'bibliography is sorted by author surname (Adams before Smith)'
+  )
+  {
+    const { db: cdb } = projectService.requireCurrent()
+    const made = createSource(cdb, { kind: 'note', title: 'Note A' })
+    assert(made.author === '' && made.container === '', 'createSource defaults citation fields to empty')
+    const upd = updateSource(cdb, made.id, { author: 'Doe, John', year: '1999' })
+    assert(upd?.author === 'Doe, John' && upd?.year === '1999', 'updateSource persists citation metadata')
+  }
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')
   assert(

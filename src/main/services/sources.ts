@@ -16,6 +16,10 @@ interface SourceRow {
   locator: string | null
   file_path: string | null
   notes: string
+  author: string
+  container: string
+  publisher: string
+  year: string
   created_at: number
 }
 
@@ -28,16 +32,47 @@ function toSource(r: SourceRow): Source {
     locator: r.locator,
     filePath: r.file_path,
     notes: r.notes,
+    author: r.author ?? '',
+    container: r.container ?? '',
+    publisher: r.publisher ?? '',
+    year: r.year ?? '',
     createdAt: r.created_at
   }
 }
 
 function insertSource(db: DB, s: Source): Source {
   db.prepare(
-    `INSERT INTO sources (id, kind, title, url, locator, file_path, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(s.id, s.kind, s.title, s.url, s.locator, s.filePath, s.notes, s.createdAt)
+    `INSERT INTO sources (id, kind, title, url, locator, file_path, notes, author, container, publisher, year, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    s.id, s.kind, s.title, s.url, s.locator, s.filePath, s.notes,
+    s.author, s.container, s.publisher, s.year, s.createdAt
+  )
   return s
+}
+
+const EDITABLE_FIELDS = ['title', 'url', 'locator', 'notes', 'author', 'container', 'publisher', 'year'] as const
+type EditableField = (typeof EDITABLE_FIELDS)[number]
+const COLUMN: Record<EditableField, string> = {
+  title: 'title', url: 'url', locator: 'locator', notes: 'notes',
+  author: 'author', container: 'container', publisher: 'publisher', year: 'year'
+}
+
+/** Update editable fields (incl. bibliographic metadata) of a source. */
+export function updateSource(db: DB, id: string, patch: Partial<Record<EditableField, string>>): Source | null {
+  const sets: string[] = []
+  const vals: unknown[] = []
+  for (const f of EDITABLE_FIELDS) {
+    if (patch[f] !== undefined) {
+      sets.push(`${COLUMN[f]} = ?`)
+      vals.push(patch[f])
+    }
+  }
+  if (sets.length) {
+    vals.push(id)
+    db.prepare(`UPDATE sources SET ${sets.join(', ')} WHERE id = ?`).run(...vals)
+  }
+  return getSource(db, id)
 }
 
 export function listSources(db: DB): Source[] {
@@ -98,6 +133,12 @@ export async function captureUrl(db: DB, root: string, url: string): Promise<Sou
   const rel = join('research', `${id}.html`)
   await writeFileAtomic(join(root, rel), snapshotHtml(readable, url, createdAt))
 
+  let container = ''
+  try {
+    container = new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    container = ''
+  }
   return insertSource(db, {
     id,
     kind: 'web',
@@ -106,6 +147,10 @@ export async function captureUrl(db: DB, root: string, url: string): Promise<Sou
     locator: null,
     filePath: rel,
     notes: readable.excerpt,
+    author: '',
+    container,
+    publisher: '',
+    year: '',
     createdAt
   })
 }
@@ -131,6 +176,10 @@ export async function importFile(
     locator: null,
     filePath: rel,
     notes: '',
+    author: '',
+    container: '',
+    publisher: '',
+    year: '',
     createdAt: Date.now()
   })
 }
@@ -138,7 +187,17 @@ export async function importFile(
 /** Create a manual source (transcript with timestamp, URL reference, or note). */
 export function createSource(
   db: DB,
-  input: { kind: SourceKind; title: string; url?: string | null; locator?: string | null; notes?: string }
+  input: {
+    kind: SourceKind
+    title: string
+    url?: string | null
+    locator?: string | null
+    notes?: string
+    author?: string
+    container?: string
+    publisher?: string
+    year?: string
+  }
 ): Source {
   return insertSource(db, {
     id: randomUUID(),
@@ -148,6 +207,10 @@ export function createSource(
     locator: input.locator ?? null,
     filePath: null,
     notes: input.notes ?? '',
+    author: input.author ?? '',
+    container: input.container ?? '',
+    publisher: input.publisher ?? '',
+    year: input.year ?? '',
     createdAt: Date.now()
   })
 }

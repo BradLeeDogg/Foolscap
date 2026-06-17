@@ -149,6 +149,15 @@ function migrate(db: DB): void {
     `)
     db.pragma('user_version = 5')
   }
+  if (current < 6) {
+    db.exec(`
+      ALTER TABLE sources ADD COLUMN author    TEXT NOT NULL DEFAULT '';
+      ALTER TABLE sources ADD COLUMN container TEXT NOT NULL DEFAULT '';
+      ALTER TABLE sources ADD COLUMN publisher TEXT NOT NULL DEFAULT '';
+      ALTER TABLE sources ADD COLUMN year      TEXT NOT NULL DEFAULT '';
+    `)
+    db.pragma('user_version = 6')
+  }
 }
 
 // --- meta key/value helpers -------------------------------------------------

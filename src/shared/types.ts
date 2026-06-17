@@ -152,6 +152,13 @@ export interface Source {
   /** Relative path under the project (research/ or assets/), if a file is stored. */
   filePath: string | null
   notes: string
+  /** Bibliographic metadata (for citation generation; all optional). */
+  author: string
+  /** Containing work: site name, journal, book, etc. */
+  container: string
+  publisher: string
+  /** Publication year or date (free-form, e.g. "2023" or "2023, Mar. 5"). */
+  year: string
   createdAt: number
 }
 

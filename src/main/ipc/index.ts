@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, BrowserWindow } from 'electron'
+import { app, clipboard, dialog, ipcMain, BrowserWindow } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import type {
@@ -323,6 +323,15 @@ export function registerIpc(): void {
   ipcMain.handle('source:remove', (_e, id: string) => {
     const { db, paths } = projectService.requireCurrent()
     return sources.removeSource(db, paths.root, id)
+  })
+  ipcMain.handle('source:update', (_e, id: string, patch: Record<string, string>) => {
+    const { db } = projectService.requireCurrent()
+    return sources.updateSource(db, id, patch)
+  })
+
+  // --- clipboard (rich copy: keeps italics when pasted into the editor/Word) --
+  ipcMain.handle('clipboard:write', (_e, text: string, html: string) => {
+    clipboard.write({ text, html })
   })
 
   // --- interview transcripts ------------------------------------------------

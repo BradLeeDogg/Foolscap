@@ -37,6 +37,10 @@ function sourcesFor(db: DB, claimId: string): Source[] {
     locator: string | null
     file_path: string | null
     notes: string
+    author: string
+    container: string
+    publisher: string
+    year: string
     created_at: number
   }>
   return rows.map((r) => ({
@@ -47,6 +51,10 @@ function sourcesFor(db: DB, claimId: string): Source[] {
     locator: r.locator,
     filePath: r.file_path,
     notes: r.notes,
+    author: r.author ?? '',
+    container: r.container ?? '',
+    publisher: r.publisher ?? '',
+    year: r.year ?? '',
     createdAt: r.created_at
   }))
 }

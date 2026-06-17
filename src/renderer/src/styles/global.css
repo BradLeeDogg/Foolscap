@@ -1582,6 +1582,75 @@ button.on {
   word-break: break-all;
 }
 
+/* source citation editor + bibliography generator */
+.src-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 10px 10px;
+  background: var(--card);
+  border-top: 1px solid var(--rule);
+}
+.src-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.src-edit-field span {
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+}
+.src-edit-field input {
+  font-size: 0.8rem;
+}
+.src-edit-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.src-intext {
+  flex: 1;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.biblio {
+  margin-top: auto;
+  border-top: 1px solid var(--rule-strong);
+}
+.biblio-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.biblio-head .insp-label {
+  flex: 1;
+}
+.biblio-preview {
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.biblio-preview p {
+  margin: 0 0 0.5em;
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+}
+.biblio-preview p:first-child {
+  font-weight: 600;
+  padding-left: 0;
+  text-indent: 0;
+}
+.biblio-note {
+  font-size: 0.7rem;
+  margin: 4px 0 0;
+}
+
 /* --- fact-check -------------------------------------------- */
 .factcheck {
   overflow-y: auto;
