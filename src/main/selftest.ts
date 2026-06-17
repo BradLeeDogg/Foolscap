@@ -126,25 +126,49 @@ async function runChecks(): Promise<void> {
   {
     const { db: tdb } = projectService.requireCurrent()
     const tr = createTranscript(tdb, 'Interview A')
+    // Header format (Name then a trailing timestamp, then text on following lines).
     const parsed = replaceSegments(
       tdb,
       tr.id,
-      '[00:12] Reporter: How did it start?\nSubject: In March.\nJust narration here.'
+      'William B. Nichols  00:00\nCNS, all right, so first.\nWrapped continuation line.\nSpeaker 1  00:03\nThanks for having me.'
     )
-    assert(parsed.segments.length === 3, 'transcript parsed three segments')
+    assert(parsed.segments.length === 2, 'turn-based parse groups two speaker turns')
     assert(
-      parsed.segments[0]!.timestamp === '00:12' && parsed.segments[0]!.speaker === 'Reporter',
-      'segment timestamp + speaker parsed'
+      parsed.segments[0]!.speaker === 'William B. Nichols' &&
+        parsed.segments[0]!.timestamp === '00:00',
+      'header speaker + trailing timestamp parsed'
     )
-    assert(parsed.segments[2]!.speaker === '', 'narration line has no speaker')
-    assert(addSegment(tdb, tr.id).segments.length === 4, 'addSegment appends a segment')
-    updateSegment(tdb, parsed.segments[1]!.id, { text: 'It began in March.' })
     assert(
-      getTranscript(tdb, tr.id)!.segments[1]!.text === 'It began in March.',
+      parsed.segments[0]!.text === 'CNS, all right, so first.\nWrapped continuation line.',
+      'continuation lines grouped under their speaker'
+    )
+    assert(parsed.segments[1]!.speaker === 'Speaker 1', 'second speaker turn parsed')
+
+    // Inline format ("[ts] Speaker: text" / "Speaker: text").
+    const inline = replaceSegments(
+      tdb,
+      tr.id,
+      '[00:12] Reporter: How did it start?\nSubject: In March.'
+    )
+    assert(
+      inline.segments.length === 2 &&
+        inline.segments[0]!.speaker === 'Reporter' &&
+        inline.segments[0]!.timestamp === '00:12',
+      'inline "[ts] Speaker: text" parsed'
+    )
+
+    const seg0 = inline.segments[0]!
+    assert(addSegment(tdb, tr.id).segments.length === 3, 'addSegment appends a segment')
+    updateSegment(tdb, seg0.id, { text: 'It began in March.' })
+    assert(
+      getTranscript(tdb, tr.id)!.segments.find((s) => s.id === seg0.id)!.text === 'It began in March.',
       'updateSegment persists'
     )
-    removeSegment(tdb, parsed.segments[1]!.id)
-    assert(getTranscript(tdb, tr.id)!.segments.length === 3, 'removeSegment drops one')
+    removeSegment(tdb, seg0.id)
+    assert(
+      !getTranscript(tdb, tr.id)!.segments.some((s) => s.id === seg0.id),
+      'removeSegment drops it'
+    )
     assert(listTranscripts(tdb).some((t) => t.id === tr.id), 'transcript is listed')
     removeTranscript(tdb, tr.id)
     assert(!listTranscripts(tdb).some((t) => t.id === tr.id), 'removeTranscript deletes it')

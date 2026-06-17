@@ -145,30 +145,71 @@ export function removeSegment(db: DB, segmentId: string): void {
 }
 
 /**
- * Parse pasted transcript text into segments. Recognizes an optional leading
- * timestamp ([00:12], (1:02:33), or bare 00:12) and an optional "Speaker:" prefix.
- * Lines without either become text-only continuation segments.
+ * Parse pasted transcript text into per-turn segments. Understands the common
+ * shapes produced by transcription tools:
+ *   • inline:        "[00:12] Reporter: How did it start?"  /  "Subject: In March."
+ *   • header line:   "William B. Nichols   00:00"   (name then a trailing time,
+ *                     separated by a tab or 2+ spaces) followed by the spoken
+ *                     text on the next line(s)
+ *   • leading time:  "00:12 The text…"
+ * A new turn starts at any recognized speaker/timestamp line; subsequent plain
+ * lines (until the next turn or a blank line) are grouped into that turn.
  */
 export function parseRaw(raw: string): Array<{ speaker: string; timestamp: string; text: string }> {
-  const out: Array<{ speaker: string; timestamp: string; text: string }> = []
-  for (const line of raw.split(/\r?\n/)) {
-    let rest = line.trim()
-    if (!rest) continue
-    let timestamp = ''
-    const tsMatch = rest.match(/^[[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?\s+/)
-    if (tsMatch) {
-      timestamp = tsMatch[1]!
-      rest = rest.slice(tsMatch[0].length)
+  const segments: Array<{ speaker: string; timestamp: string; text: string }> = []
+  let curr: { speaker: string; timestamp: string; lines: string[] } | null = null
+
+  const flush = (): void => {
+    if (!curr) return
+    const text = curr.lines.join('\n').trim()
+    if (curr.speaker || curr.timestamp || text) {
+      segments.push({ speaker: curr.speaker, timestamp: curr.timestamp, text })
     }
-    let speaker = ''
-    const spMatch = rest.match(/^([A-Za-z0-9 ._'-]{1,40}?):\s+(.*)$/)
-    if (spMatch && !/^\d+$/.test(spMatch[1]!.trim())) {
-      speaker = spMatch[1]!.trim()
-      rest = spMatch[2]!
-    }
-    out.push({ speaker, timestamp, text: rest })
+    curr = null
   }
-  return out
+  const start = (speaker: string, timestamp: string, first?: string): void => {
+    flush()
+    curr = { speaker, timestamp, lines: first != null ? [first] : [] }
+  }
+
+  const reLeadTsSpeaker = /^[[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?\s+([^:]{1,40}):\s+(.*)$/
+  const reHeaderTrailTs = /^(.{1,50}?)(?:\t+| {2,})[[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?$/
+  const reSpeakerColon = /^([^:]{1,40}):\s+(.*)$/
+  const reLeadTs = /^[[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?\s+(.*)$/
+  const numeric = /^\d+$/
+  const hasTime = /\d{1,2}:\d{2}/
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line) {
+      flush()
+      continue
+    }
+    let m = line.match(reLeadTsSpeaker)
+    if (m && !numeric.test(m[2]!.trim())) {
+      start(m[2]!.trim(), m[1]!, m[3])
+      continue
+    }
+    m = line.match(reHeaderTrailTs)
+    if (m && !/[.!?,;]$/.test(m[1]!.trim()) && !hasTime.test(m[1]!)) {
+      start(m[1]!.trim(), m[2]!)
+      continue
+    }
+    m = line.match(reSpeakerColon)
+    if (m && !numeric.test(m[1]!.trim()) && !hasTime.test(m[1]!)) {
+      start(m[1]!.trim(), '', m[2])
+      continue
+    }
+    m = line.match(reLeadTs)
+    if (m) {
+      start('', m[1]!, m[2])
+      continue
+    }
+    if (curr) curr.lines.push(line)
+    else curr = { speaker: '', timestamp: '', lines: [line] }
+  }
+  flush()
+  return segments
 }
 
 /** Replace a transcript's segments with parsed lines (used by "paste & parse"). */

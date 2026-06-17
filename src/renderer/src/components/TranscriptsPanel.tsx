@@ -128,7 +128,14 @@ export default function TranscriptsPanel({ onClose }: Props): JSX.Element {
             <textarea
               className="tr-raw"
               value={raw}
-              placeholder={'[00:12] Reporter: How did it start?\nSubject: It began in March…'}
+              placeholder={
+                'Paste an interview — two common shapes work:\n\n' +
+                '[00:12] Reporter: How did it start?\n' +
+                'Subject: It began in March…\n\n' +
+                '— or —\n\n' +
+                'William B. Nichols   00:00\n' +
+                'It began in March…'
+              }
               onChange={(e) => setRaw(e.target.value)}
             />
             <button onClick={parse} disabled={!raw.trim()}>

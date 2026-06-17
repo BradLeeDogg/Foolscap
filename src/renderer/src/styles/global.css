@@ -910,7 +910,7 @@ button.on {
 }
 .tr-raw {
   width: 100%;
-  min-height: 76px;
+  min-height: 110px;
   resize: vertical;
   font: inherit;
   margin-bottom: 0.4rem;
