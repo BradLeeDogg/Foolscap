@@ -47,6 +47,11 @@ MyNovel.writeproject/
 
 ## Milestones
 
+> **Status: v1 feature-complete.** All of Phases 1–5 are implemented, including the
+> originally-deferred ePub export and Scrivener `.scriv` import. Verified each milestone
+> with typecheck + build + a 33-assertion end-to-end self-test (WP_SELFTEST) in the
+> Electron runtime + a headless xvfb GUI smoke. Only Phase 6+ remains (out of v1 scope).
+
 ### M0 — Scaffold & prove the loop  ✅
 - [x] electron-vite + React + TS project; main/preload/renderer/shared separation
 - [x] Typecheck + bundle build green
