@@ -12,7 +12,10 @@ const TYPE_OPTIONS: Array<{ value: ProjectType; label: string; note: string }> =
   { value: 'journalism-long', label: 'Journalism — Feature', note: 'Scene-driven, fact-check' },
   { value: 'dissertation', label: 'Dissertation', note: 'Front matter, chapters, references' },
   { value: 'technical', label: 'Technical Writing', note: 'Docs, guides, reference, glossary' },
-  { value: 'sop', label: 'SOP / Procedure', note: 'Purpose, steps, safety, revisions' }
+  { value: 'sop', label: 'SOP / Procedure', note: 'Purpose, steps, safety, revisions' },
+  { value: 'college-essay', label: 'College Essay', note: 'Thesis, body, conclusion + Works Cited (MLA)' },
+  { value: 'academic-paper', label: 'Research Paper', note: 'Sections, citations, references (APA)' },
+  { value: 'thesis', label: 'Thesis', note: 'Front matter, chapters, bibliography (Chicago)' }
 ]
 
 export default function Launcher(): JSX.Element {

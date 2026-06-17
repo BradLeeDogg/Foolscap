@@ -82,6 +82,57 @@ export const COMPILE_PRESETS: Record<CompilePresetId, CompilePreset> = {
     sceneBreak: '',
     bylineDateline: false,
     chapterHeadings: true
+  },
+  // MLA (9th ed.) — no title page (a heading block sits atop page one); a
+  // last-name/page running header; double-spaced; ½" first-line indent. Works Cited.
+  mla: {
+    id: 'mla',
+    name: 'MLA (Modern Language Association)',
+    font: 'Times New Roman',
+    fontSizePt: 12,
+    lineSpacing: 2,
+    marginInches: 1,
+    pageSize: 'us-letter',
+    firstLineIndentInches: 0.5,
+    titlePage: false,
+    runningHeader: true,
+    sceneBreak: '',
+    bylineDateline: false,
+    chapterHeadings: false
+  },
+  // APA (7th ed., student paper) — title page; page-number running header;
+  // double-spaced; ½" first-line indent. References.
+  apa: {
+    id: 'apa',
+    name: 'APA (American Psychological Association)',
+    font: 'Times New Roman',
+    fontSizePt: 12,
+    lineSpacing: 2,
+    marginInches: 1,
+    pageSize: 'us-letter',
+    firstLineIndentInches: 0.5,
+    titlePage: true,
+    runningHeader: true,
+    sceneBreak: '',
+    bylineDateline: false,
+    chapterHeadings: false
+  },
+  // Chicago / Turabian — title page; page-number running header; double-spaced;
+  // ½" first-line indent. Bibliography. (Enable chapter headings for theses.)
+  chicago: {
+    id: 'chicago',
+    name: 'Chicago / Turabian',
+    font: 'Times New Roman',
+    fontSizePt: 12,
+    lineSpacing: 2,
+    marginInches: 1,
+    pageSize: 'us-letter',
+    firstLineIndentInches: 0.5,
+    titlePage: true,
+    runningHeader: true,
+    sceneBreak: '',
+    bylineDateline: false,
+    chapterHeadings: false
   }
 }
 
@@ -98,6 +149,12 @@ export function defaultPresetFor(type: ProjectType): CompilePresetId {
     case 'technical':
     case 'sop':
       return 'technical'
+    case 'college-essay':
+      return 'mla'
+    case 'academic-paper':
+      return 'apa'
+    case 'thesis':
+      return 'chicago'
     default:
       return 'shunn'
   }

@@ -12,6 +12,9 @@ export type ProjectType =
   | 'dissertation'
   | 'technical'
   | 'sop'
+  | 'college-essay'
+  | 'academic-paper'
+  | 'thesis'
 
 /** A node in the binder tree. Folders organize; documents hold prose. */
 export type BinderItemType = 'folder' | 'document'
@@ -212,6 +215,9 @@ export type CompilePresetId =
   | 'journalism'
   | 'dissertation'
   | 'technical'
+  | 'mla'
+  | 'apa'
+  | 'chicago'
 
 /** A submission layout applied at compile/export. Editable before exporting. */
 export interface CompilePreset {

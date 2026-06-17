@@ -114,6 +114,49 @@ async function runChecks(): Promise<void> {
       !!COMPILE_PRESETS['technical'],
     'technical/SOP map to the technical compile preset'
   )
+  // College essay / research paper / thesis types, citation presets, and outlines.
+  assert(
+    getTemplate('college-essay').some((n) => n.title === 'Essay' && n.isSpecial),
+    'college-essay template has a special Essay folder'
+  )
+  assert(
+    getTemplate('academic-paper').some((n) => n.title === 'Paper' && n.isSpecial),
+    'academic-paper template has a special Paper folder'
+  )
+  assert(
+    getTemplate('thesis').some((n) => n.title === 'Chapters' && n.isSpecial),
+    'thesis template has a special Chapters folder'
+  )
+  assert(
+    getTemplate('college-essay', 'essay-5-paragraph').some(
+      (n) => n.title === 'Outline — Five-Paragraph Essay'
+    ),
+    'college-essay overlay inserts a labeled outline'
+  )
+  assert(
+    getTemplate('academic-paper', 'paper-research').some(
+      (n) => n.title === 'Outline — Research Paper'
+    ),
+    'academic-paper overlay inserts a labeled outline'
+  )
+  assert(
+    getTemplate('thesis', 'thesis-standard').some((n) => n.title === 'Outline — Standard Thesis'),
+    'thesis overlay inserts a labeled outline'
+  )
+  assert(
+    defaultPresetFor('college-essay') === 'mla' &&
+      defaultPresetFor('academic-paper') === 'apa' &&
+      defaultPresetFor('thesis') === 'chicago',
+    'academic types default to MLA / APA / Chicago'
+  )
+  assert(
+    !!COMPILE_PRESETS['mla'] &&
+      !!COMPILE_PRESETS['apa'] &&
+      !!COMPILE_PRESETS['chicago'] &&
+      COMPILE_PRESETS.mla.titlePage === false &&
+      COMPILE_PRESETS.apa.titlePage === true,
+    'MLA/APA/Chicago presets exist with expected title-page rules'
+  )
   // The apply-overlay-to-existing-project path (binder:applyOverlay) inserts a folder + sections.
   {
     const { db: liveDb } = projectService.requireCurrent()

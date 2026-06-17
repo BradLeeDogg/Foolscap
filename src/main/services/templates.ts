@@ -180,6 +180,54 @@ export const STRUCTURE_BEATS: Record<StructureOverlay, Array<[string, string]>> 
     ['Steps', 'Check-off actions, in order.'],
     ['Sign-off', 'Who verifies and approves.'],
     ['Escalation', 'What to do if a step fails.']
+  ],
+  'essay-5-paragraph': [
+    ['Introduction', 'Hook, context, and a clear thesis statement.'],
+    ['Body Paragraph 1', 'First supporting point with evidence.'],
+    ['Body Paragraph 2', 'Second supporting point with evidence.'],
+    ['Body Paragraph 3', 'Third supporting point with evidence.'],
+    ['Conclusion', 'Restate the thesis, synthesize, closing thought.']
+  ],
+  'essay-argumentative': [
+    ['Introduction & Thesis', 'Issue, stance, and claim.'],
+    ['Background', 'Context the reader needs.'],
+    ['Argument 1', 'Strongest reason with evidence.'],
+    ['Argument 2', 'Second reason with evidence.'],
+    ['Counterargument & Rebuttal', 'Opposing view, then your response.'],
+    ['Conclusion', 'Reaffirm the claim and its significance.']
+  ],
+  'essay-compare': [
+    ['Introduction', 'Subjects and the basis for comparison; thesis.'],
+    ['Subject A', 'Key points about the first subject.'],
+    ['Subject B', 'Key points about the second subject.'],
+    ['Comparison & Analysis', 'Similarities, differences, and what they mean.'],
+    ['Conclusion', 'Synthesis and takeaway.']
+  ],
+  'paper-research': [
+    ['Introduction', 'Topic, significance, and research question.'],
+    ['Literature Review', 'What prior work has established.'],
+    ['Methods', 'How the work was done.'],
+    ['Results', 'What was found.'],
+    ['Discussion', 'Interpretation and implications.'],
+    ['Conclusion', 'Summary and future directions.'],
+    ['References', 'Sources cited.']
+  ],
+  'paper-lit-review': [
+    ['Introduction', 'Scope and purpose of the review.'],
+    ['Themes & Trends', 'Group the literature by theme.'],
+    ['Synthesis', 'How the sources relate and build.'],
+    ['Gaps & Questions', 'What remains unresolved.'],
+    ['Conclusion', 'Summary and direction for new work.']
+  ],
+  'thesis-standard': [
+    ['Abstract', 'One-paragraph summary of the whole.'],
+    ['Introduction', 'Problem, aims, and significance.'],
+    ['Literature Review', 'Prior work and theoretical frame.'],
+    ['Methodology', 'Design, data, and procedure.'],
+    ['Results', 'Findings.'],
+    ['Discussion', 'Interpretation and limitations.'],
+    ['Conclusion', 'Contributions and future work.'],
+    ['Bibliography', 'Works cited.']
   ]
 }
 
@@ -426,6 +474,80 @@ function sopTemplate(): TemplateNode[] {
   ]
 }
 
+function collegeEssayTemplate(): TemplateNode[] {
+  return [
+    {
+      type: 'folder',
+      title: 'Essay',
+      isSpecial: true,
+      synopsis: 'The essay itself. Compile pulls from here, in order.',
+      children: [
+        { type: 'document', title: 'Introduction', synopsis: 'Hook, context, and thesis statement.' },
+        { type: 'document', title: 'Body Paragraph 1', synopsis: 'First point with evidence.' },
+        { type: 'document', title: 'Body Paragraph 2', synopsis: 'Second point with evidence.' },
+        { type: 'document', title: 'Body Paragraph 3', synopsis: 'Third point with evidence.' },
+        { type: 'document', title: 'Conclusion', synopsis: 'Restate the thesis and synthesize.' }
+      ]
+    },
+    { type: 'document', title: 'Works Cited', synopsis: 'Citations (style applied at compile).' },
+    { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
+  ]
+}
+
+function academicPaperTemplate(): TemplateNode[] {
+  return [
+    sheet('Paper Info', ['Title:', 'Author:', 'Course:', 'Instructor:', 'Date:']),
+    {
+      type: 'folder',
+      title: 'Paper',
+      isSpecial: true,
+      synopsis: 'The paper itself. Compile pulls from here, in order.',
+      children: [
+        { type: 'document', title: 'Abstract', synopsis: 'Concise summary (if required).' },
+        { type: 'document', title: 'Introduction', synopsis: 'Topic, significance, research question.' },
+        { type: 'document', title: 'Literature Review', synopsis: 'What prior work established.' },
+        { type: 'document', title: 'Methods', synopsis: 'How the work was done.' },
+        { type: 'document', title: 'Results', synopsis: 'What was found.' },
+        { type: 'document', title: 'Discussion', synopsis: 'Interpretation and implications.' },
+        { type: 'document', title: 'Conclusion', synopsis: 'Summary and future directions.' }
+      ]
+    },
+    { type: 'document', title: 'References', synopsis: 'Citations (style applied at compile).' },
+    { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
+  ]
+}
+
+function thesisTemplate(): TemplateNode[] {
+  return [
+    {
+      type: 'folder',
+      title: 'Front Matter',
+      children: [
+        { type: 'document', title: 'Title Page', synopsis: 'Title, author, institution, date.' },
+        { type: 'document', title: 'Abstract', synopsis: 'One-paragraph summary.' },
+        { type: 'document', title: 'Acknowledgments' },
+        { type: 'document', title: 'Table of Contents', synopsis: 'Generated at compile.' }
+      ]
+    },
+    {
+      type: 'folder',
+      title: 'Chapters',
+      isSpecial: true,
+      synopsis: 'The thesis body. Compile pulls from here, in order.',
+      children: [
+        { type: 'document', title: 'Chapter 1 — Introduction', synopsis: 'Problem, aims, significance.' },
+        { type: 'document', title: 'Chapter 2 — Literature Review', synopsis: 'Prior work and framing.' },
+        { type: 'document', title: 'Chapter 3 — Methodology', synopsis: 'Design, data, procedure.' },
+        { type: 'document', title: 'Chapter 4 — Results', synopsis: 'Findings.' },
+        { type: 'document', title: 'Chapter 5 — Discussion', synopsis: 'Interpretation and limitations.' },
+        { type: 'document', title: 'Chapter 6 — Conclusion', synopsis: 'Contributions and future work.' }
+      ]
+    },
+    { type: 'document', title: 'Bibliography', synopsis: 'Citations (style applied at compile).' },
+    { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
+  ]
+}
+
 function baseTemplate(type: ProjectType): TemplateNode[] {
   switch (type) {
     case 'novel':
@@ -446,6 +568,12 @@ function baseTemplate(type: ProjectType): TemplateNode[] {
       return technicalTemplate()
     case 'sop':
       return sopTemplate()
+    case 'college-essay':
+      return collegeEssayTemplate()
+    case 'academic-paper':
+      return academicPaperTemplate()
+    case 'thesis':
+      return thesisTemplate()
     default:
       return shortStoryTemplate()
   }

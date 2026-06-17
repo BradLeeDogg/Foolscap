@@ -65,6 +65,15 @@ export type StructureOverlay =
   // standard operating procedures
   | 'sop-standard'
   | 'sop-checklist'
+  // college essays
+  | 'essay-5-paragraph'
+  | 'essay-argumentative'
+  | 'essay-compare'
+  // academic papers
+  | 'paper-research'
+  | 'paper-lit-review'
+  // thesis
+  | 'thesis-standard'
 
 /** Display names for each overlay (shared by the launcher and the templates). */
 export const OVERLAY_LABELS: Record<StructureOverlay, string> = {
@@ -83,7 +92,13 @@ export const OVERLAY_LABELS: Record<StructureOverlay, string> = {
   'tech-api': 'API Reference',
   'tech-tutorial': 'Tutorial',
   'sop-standard': 'Standard SOP',
-  'sop-checklist': 'Checklist SOP'
+  'sop-checklist': 'Checklist SOP',
+  'essay-5-paragraph': 'Five-Paragraph Essay',
+  'essay-argumentative': 'Argumentative Essay',
+  'essay-compare': 'Compare & Contrast',
+  'paper-research': 'Research Paper',
+  'paper-lit-review': 'Literature Review',
+  'thesis-standard': 'Standard Thesis'
 }
 
 /** Which overlays are offered for each project type (absent = none). */
@@ -96,7 +111,10 @@ export const OVERLAYS_BY_TYPE: Partial<Record<ProjectType, StructureOverlay[]>> 
   'journalism-long': ['feature-anatomy', 'news-inverted-pyramid'],
   dissertation: ['diss-standard', 'diss-imrad'],
   technical: ['tech-user-guide', 'tech-api', 'tech-tutorial'],
-  sop: ['sop-standard', 'sop-checklist']
+  sop: ['sop-standard', 'sop-checklist'],
+  'college-essay': ['essay-5-paragraph', 'essay-argumentative', 'essay-compare'],
+  'academic-paper': ['paper-research', 'paper-lit-review'],
+  thesis: ['thesis-standard', 'diss-imrad']
 }
 
 /** Returned when a project opens — everything the renderer needs to render. */
