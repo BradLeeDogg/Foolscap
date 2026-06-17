@@ -10,6 +10,8 @@ export type ProjectType =
   | 'journalism-short'
   | 'journalism-long'
   | 'dissertation'
+  | 'technical'
+  | 'sop'
 
 /** A node in the binder tree. Folders organize; documents hold prose. */
 export type BinderItemType = 'folder' | 'document'
@@ -202,7 +204,12 @@ export interface MetaField {
 /** Per-item metadata: fieldId -> value. */
 export type MetaValues = Record<string, string>
 
-export type CompilePresetId = 'shunn' | 'nonfiction-proposal' | 'journalism' | 'dissertation'
+export type CompilePresetId =
+  | 'shunn'
+  | 'nonfiction-proposal'
+  | 'journalism'
+  | 'dissertation'
+  | 'technical'
 
 /** A submission layout applied at compile/export. Editable before exporting. */
 export interface CompilePreset {

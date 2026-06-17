@@ -65,6 +65,23 @@ export const COMPILE_PRESETS: Record<CompilePresetId, CompilePreset> = {
     sceneBreak: '',
     bylineDateline: false,
     chapterHeadings: true
+  },
+  // Clean business/technical layout — single-spaced, block paragraphs, headings,
+  // no title page. Suits documentation, manuals, and SOPs.
+  technical: {
+    id: 'technical',
+    name: 'Technical / Business Document',
+    font: 'Times New Roman',
+    fontSizePt: 12,
+    lineSpacing: 1,
+    marginInches: 1,
+    pageSize: 'us-letter',
+    firstLineIndentInches: 0,
+    titlePage: false,
+    runningHeader: true,
+    sceneBreak: '',
+    bylineDateline: false,
+    chapterHeadings: true
   }
 }
 
@@ -78,6 +95,9 @@ export function defaultPresetFor(type: ProjectType): CompilePresetId {
       return 'journalism'
     case 'dissertation':
       return 'dissertation'
+    case 'technical':
+    case 'sop':
+      return 'technical'
     default:
       return 'shunn'
   }

@@ -10,7 +10,9 @@ const TYPE_OPTIONS: Array<{ value: ProjectType; label: string; note: string }> =
   { value: 'nonfiction-book', label: 'Nonfiction Book', note: 'Proposal apparatus + chapters' },
   { value: 'journalism-short', label: 'Journalism — Short', note: 'Lede/nut-graf scaffold, fact-check' },
   { value: 'journalism-long', label: 'Journalism — Feature', note: 'Scene-driven, fact-check' },
-  { value: 'dissertation', label: 'Dissertation', note: 'Front matter, chapters, references' }
+  { value: 'dissertation', label: 'Dissertation', note: 'Front matter, chapters, references' },
+  { value: 'technical', label: 'Technical Writing', note: 'Docs, guides, reference, glossary' },
+  { value: 'sop', label: 'SOP / Procedure', note: 'Purpose, steps, safety, revisions' }
 ]
 
 export default function Launcher(): JSX.Element {

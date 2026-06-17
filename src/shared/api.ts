@@ -58,6 +58,13 @@ export type StructureOverlay =
   // dissertation / thesis
   | 'diss-standard'
   | 'diss-imrad'
+  // technical writing
+  | 'tech-user-guide'
+  | 'tech-api'
+  | 'tech-tutorial'
+  // standard operating procedures
+  | 'sop-standard'
+  | 'sop-checklist'
 
 /** Display names for each overlay (shared by the launcher and the templates). */
 export const OVERLAY_LABELS: Record<StructureOverlay, string> = {
@@ -71,7 +78,12 @@ export const OVERLAY_LABELS: Record<StructureOverlay, string> = {
   'news-inverted-pyramid': 'Inverted Pyramid',
   'feature-anatomy': 'Feature Anatomy',
   'diss-standard': 'Standard (Abstract → Conclusion)',
-  'diss-imrad': 'IMRaD'
+  'diss-imrad': 'IMRaD',
+  'tech-user-guide': 'User Guide',
+  'tech-api': 'API Reference',
+  'tech-tutorial': 'Tutorial',
+  'sop-standard': 'Standard SOP',
+  'sop-checklist': 'Checklist SOP'
 }
 
 /** Which overlays are offered for each project type (absent = none). */
@@ -82,7 +94,9 @@ export const OVERLAYS_BY_TYPE: Partial<Record<ProjectType, StructureOverlay[]>> 
   'nonfiction-book': ['nf-narrative', 'nf-argument', 'nf-prescriptive'],
   'journalism-short': ['news-inverted-pyramid', 'feature-anatomy'],
   'journalism-long': ['feature-anatomy', 'news-inverted-pyramid'],
-  dissertation: ['diss-standard', 'diss-imrad']
+  dissertation: ['diss-standard', 'diss-imrad'],
+  technical: ['tech-user-guide', 'tech-api', 'tech-tutorial'],
+  sop: ['sop-standard', 'sop-checklist']
 }
 
 /** Returned when a project opens — everything the renderer needs to render. */

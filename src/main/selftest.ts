@@ -26,7 +26,7 @@ import {
   updateSegment
 } from './services/transcripts'
 import { extractPlainText } from './services/documents'
-import { COMPILE_PRESETS } from '@shared/presets'
+import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
 
 const log: string[] = []
@@ -82,6 +82,29 @@ async function runChecks(): Promise<void> {
   assert(
     getTemplate('dissertation', 'diss-imrad').some((n) => n.title === 'Outline — IMRaD'),
     'dissertation overlay inserts a labeled outline'
+  )
+  // Technical writing + SOP project types and their overlays.
+  assert(
+    getTemplate('technical').some((n) => n.title === 'Documentation' && n.isSpecial),
+    'technical template has a special Documentation folder'
+  )
+  assert(
+    getTemplate('sop').some((n) => n.title === 'SOP' && n.isSpecial),
+    'SOP template has a special SOP folder'
+  )
+  assert(
+    getTemplate('technical', 'tech-api').some((n) => n.title === 'Outline — API Reference'),
+    'technical overlay inserts a labeled outline'
+  )
+  assert(
+    getTemplate('sop', 'sop-standard').some((n) => n.title === 'Outline — Standard SOP'),
+    'SOP overlay inserts a labeled outline'
+  )
+  assert(
+    defaultPresetFor('technical') === 'technical' &&
+      defaultPresetFor('sop') === 'technical' &&
+      !!COMPILE_PRESETS['technical'],
+    'technical/SOP map to the technical compile preset'
   )
   // The apply-overlay-to-existing-project path (binder:applyOverlay) inserts a folder + sections.
   {

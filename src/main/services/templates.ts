@@ -133,6 +133,53 @@ export const STRUCTURE_BEATS: Record<StructureOverlay, Array<[string, string]>> 
     ['Results', 'Findings, without interpretation.'],
     ['Discussion', 'Interpretation and implications.'],
     ['References', 'Works cited.']
+  ],
+  'tech-user-guide': [
+    ['Overview', "What this product does and who it's for."],
+    ['Prerequisites', 'What the reader needs before starting.'],
+    ['Getting Started', 'Install, set up, and first run.'],
+    ['Core Tasks', 'The main things users do, step by step.'],
+    ['Reference', 'Settings, options, and specifications.'],
+    ['Troubleshooting', 'Common problems and fixes.'],
+    ['FAQ', 'Frequently asked questions.'],
+    ['Glossary', 'Key terms defined.']
+  ],
+  'tech-api': [
+    ['Overview', 'What the API does; base URL and core concepts.'],
+    ['Authentication', 'Keys, tokens, and scopes.'],
+    ['Quickstart', 'A minimal working request.'],
+    ['Endpoints', 'Routes, methods, and parameters.'],
+    ['Responses', 'Schemas and example payloads.'],
+    ['Errors', 'Status codes and messages.'],
+    ['Rate Limits', 'Quotas and throttling.'],
+    ['Changelog', 'Versioned changes.']
+  ],
+  'tech-tutorial': [
+    ['Goal', 'What the reader will build or learn.'],
+    ['Prerequisites', 'Required tools and knowledge.'],
+    ['Steps', 'Ordered, do-this-now instructions.'],
+    ['Verify', 'Confirm it worked.'],
+    ['Recap', 'What was covered.'],
+    ['Next Steps', 'Where to go from here.']
+  ],
+  'sop-standard': [
+    ['Purpose', 'Why this procedure exists.'],
+    ['Scope', 'What and whom it applies to.'],
+    ['Responsibilities', 'Who does what.'],
+    ['Definitions', 'Terms and acronyms.'],
+    ['Materials & Equipment', 'What is required to perform it.'],
+    ['Procedure', 'Numbered, sequential steps.'],
+    ['Safety & Compliance', 'Hazards, PPE, and regulations.'],
+    ['References', 'Related documents and standards.'],
+    ['Revision History', 'Version, date, author, change.']
+  ],
+  'sop-checklist': [
+    ['Purpose', 'What this checklist ensures.'],
+    ['When to Use', 'Trigger or frequency.'],
+    ['Pre-Checks', 'Conditions to confirm first.'],
+    ['Steps', 'Check-off actions, in order.'],
+    ['Sign-off', 'Who verifies and approves.'],
+    ['Escalation', 'What to do if a step fails.']
   ]
 }
 
@@ -311,6 +358,74 @@ function dissertationTemplate(): TemplateNode[] {
   ]
 }
 
+function technicalTemplate(): TemplateNode[] {
+  return [
+    {
+      type: 'folder',
+      title: 'Documentation',
+      isSpecial: true,
+      synopsis: 'The deliverable. Compile pulls from here, in order.',
+      children: [
+        { type: 'document', title: 'Overview', synopsis: "What this covers and who it's for." },
+        { type: 'document', title: 'Getting Started', synopsis: 'Install, set up, first run.' },
+        {
+          type: 'folder',
+          title: 'Guides',
+          children: [{ type: 'document', title: 'How-To', synopsis: 'A task-based guide.' }]
+        },
+        {
+          type: 'folder',
+          title: 'Reference',
+          children: [{ type: 'document', title: 'Reference', synopsis: 'Options, parameters, specs.' }]
+        },
+        { type: 'document', title: 'Troubleshooting', synopsis: 'Common problems and fixes.' },
+        { type: 'document', title: 'FAQ', synopsis: 'Frequently asked questions.' }
+      ]
+    },
+    { type: 'document', title: 'Glossary', synopsis: 'Terms and definitions.' },
+    { type: 'folder', title: 'Assets', synopsis: 'Screenshots and diagrams.' },
+    { type: 'folder', title: 'Research', synopsis: 'Source material and notes.' }
+  ]
+}
+
+function sopTemplate(): TemplateNode[] {
+  return [
+    {
+      type: 'folder',
+      title: 'SOP',
+      isSpecial: true,
+      synopsis: 'The procedure itself. Compile pulls from here, in order.',
+      children: [
+        sheet('Document Control', [
+          'SOP number:',
+          'Version:',
+          'Effective date:',
+          'Owner:',
+          'Approved by:'
+        ]),
+        { type: 'document', title: 'Purpose', synopsis: 'Why this procedure exists.' },
+        { type: 'document', title: 'Scope', synopsis: 'What and whom it applies to.' },
+        sheet('Responsibilities', ['Role:', 'Responsibility:']),
+        {
+          type: 'document',
+          title: 'Materials & Prerequisites',
+          synopsis: 'What is needed before starting.'
+        },
+        {
+          type: 'folder',
+          title: 'Procedure',
+          synopsis: 'Numbered, sequential steps.',
+          children: [{ type: 'document', title: 'Step 1', synopsis: 'First action.' }]
+        },
+        { type: 'document', title: 'Safety & Warnings', synopsis: 'Hazards and cautions.' },
+        { type: 'document', title: 'References', synopsis: 'Related documents and standards.' }
+      ]
+    },
+    sheet('Revision History', ['Version:', 'Date:', 'Author:', 'Summary of changes:']),
+    { type: 'document', title: 'Notes', body: [''] }
+  ]
+}
+
 function baseTemplate(type: ProjectType): TemplateNode[] {
   switch (type) {
     case 'novel':
@@ -327,6 +442,10 @@ function baseTemplate(type: ProjectType): TemplateNode[] {
       return journalismLongTemplate()
     case 'dissertation':
       return dissertationTemplate()
+    case 'technical':
+      return technicalTemplate()
+    case 'sop':
+      return sopTemplate()
     default:
       return shortStoryTemplate()
   }
