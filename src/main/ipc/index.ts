@@ -4,11 +4,14 @@ import { join } from 'path'
 import type {
   BinderCreateInput,
   BinderMoveInput,
-  CreateProjectOptions
+  CreateProjectOptions,
+  StructureOverlay
 } from '@shared/api'
+import { OVERLAY_LABELS } from '@shared/api'
 import type { DocumentContent, ProjectSettings } from '@shared/types'
 import { projectService } from '../services/project'
 import * as binder from '../services/binder'
+import { STRUCTURE_BEATS } from '../services/templates'
 import { countWords, emptyDoc, readDocument, writeDocument } from '../services/documents'
 import { documentFile, snapshotFile } from '../services/paths'
 import * as snapshots from '../services/snapshots'
@@ -154,6 +157,24 @@ export function registerIpc(): void {
     const { db } = projectService.requireCurrent()
     binder.moveItem(db, input)
     return binder.listBinder(db)
+  })
+
+  // Drop a structure outline (placeholder sections) into the existing project.
+  ipcMain.handle('binder:applyOverlay', async (_e, overlay: StructureOverlay) => {
+    const { db, paths } = projectService.requireCurrent()
+    const beats = STRUCTURE_BEATS[overlay]
+    if (!beats) throw new Error(`Unknown structure overlay: ${overlay}`)
+    const folder = binder.createItemFull(db, {
+      type: 'folder',
+      title: `Outline — ${OVERLAY_LABELS[overlay]}`,
+      parentId: null,
+      synopsis: 'Structural placeholders. Keep, rearrange, or discard.'
+    })
+    for (const [title, synopsis] of beats) {
+      const item = binder.createItemFull(db, { type: 'document', title, parentId: folder.id, synopsis })
+      await writeDocument(paths.root, item.id, emptyDoc())
+    }
+    return { folderId: folder.id, tree: binder.listBinder(db) }
   })
 
   // --- document -------------------------------------------------------------

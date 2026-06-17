@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useStore } from '../store/useStore'
 import { allDocuments } from '../lib/tree'
@@ -14,6 +14,7 @@ import FactCheckPanel from './FactCheckPanel'
 import CompileDialog from './CompileDialog'
 import SettingsDialog from './SettingsDialog'
 import CompositionMode from './CompositionMode'
+import QuickOpen from './QuickOpen'
 
 function saveLabel(state: string, at: number | null): string {
   switch (state) {
@@ -53,7 +54,21 @@ export default function Workspace(): JSX.Element {
   const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
   const [showCompile, setShowCompile] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showQuickOpen, setShowQuickOpen] = useState(false)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
+
+  // Ctrl/⌘-P opens the quick-jump palette (ignored while composing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        if (useStore.getState().composition) return
+        e.preventDefault()
+        setShowQuickOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const handleClose = async (): Promise<void> => {
     await window.api.project.close()
@@ -115,6 +130,9 @@ export default function Workspace(): JSX.Element {
           <span className="sep" />
           <button className={showFind ? 'on' : ''} onClick={() => setShowFind((v) => !v)}>
             Find
+          </button>
+          <button onClick={() => setShowQuickOpen(true)} title="Quick open (Ctrl/⌘ P)">
+            Go to
           </button>
           <button className={splitId ? 'on' : ''} onClick={toggleSplit}>
             Split
@@ -222,6 +240,7 @@ export default function Workspace(): JSX.Element {
       {composition && <CompositionMode />}
       {showCompile && <CompileDialog onClose={() => setShowCompile(false)} />}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showQuickOpen && <QuickOpen onClose={() => setShowQuickOpen(false)} />}
     </div>
   )
 }

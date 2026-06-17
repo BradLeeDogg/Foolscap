@@ -834,6 +834,60 @@ button.on {
   align-items: center;
   justify-content: center;
 }
+
+/* --- quick open (Ctrl/⌘-P) --------------------------------- */
+.quickopen-backdrop {
+  align-items: flex-start;
+}
+.quickopen {
+  margin-top: 12vh;
+  width: min(560px, 92vw);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.quickopen-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  background: var(--card);
+}
+.quickopen-input:focus {
+  outline: none;
+}
+.quickopen-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.quickopen-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.quickopen-list li.active {
+  background: var(--selected);
+}
+.quickopen-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quickopen-empty {
+  justify-content: center;
+  cursor: default;
+  padding: 0.8rem;
+}
 .modal {
   background: var(--paper);
   border-radius: 12px;

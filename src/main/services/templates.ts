@@ -21,7 +21,7 @@ function sheet(title: string, fields: string[]): TemplateNode {
   return { type: 'document', title, body: fields }
 }
 
-const STRUCTURE_BEATS: Record<StructureOverlay, Array<[string, string]>> = {
+export const STRUCTURE_BEATS: Record<StructureOverlay, Array<[string, string]>> = {
   'three-act': [
     ['Act I — Setup', 'Establish the ordinary world, the protagonist, and the stakes.'],
     ['Inciting Incident', 'The event that disrupts the status quo and starts the story.'],

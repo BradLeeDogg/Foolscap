@@ -3,7 +3,7 @@ import { promises as fs } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { projectService } from './services/project'
-import { createItem, listBinder, moveItem, removeItem, setNotes } from './services/binder'
+import { createItem, createItemFull, listBinder, moveItem, removeItem, setNotes } from './services/binder'
 import * as meta from './services/metadata'
 import { countWords, emptyDoc, readDocument, writeDocument } from './services/documents'
 import { createSnapshot, listSnapshots, restoreSnapshot } from './services/snapshots'
@@ -14,7 +14,7 @@ import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
 import { compileToDocxBuffer, compileToEpubBuffer, compileToPdfBuffer } from './services/compile'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
-import { getTemplate } from './services/templates'
+import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
@@ -73,6 +73,21 @@ async function runChecks(): Promise<void> {
     getTemplate('dissertation', 'diss-imrad').some((n) => n.title === 'Outline — IMRaD'),
     'dissertation overlay inserts a labeled outline'
   )
+  // The apply-overlay-to-existing-project path (binder:applyOverlay) inserts a folder + sections.
+  {
+    const { db: liveDb } = projectService.requireCurrent()
+    const folder = createItemFull(liveDb, {
+      type: 'folder',
+      title: 'Outline — Argument',
+      parentId: null,
+      synopsis: ''
+    })
+    for (const [t, syn] of STRUCTURE_BEATS['nf-argument']) {
+      createItemFull(liveDb, { type: 'document', title: t, parentId: folder.id, synopsis: syn })
+    }
+    const kids = listBinder(liveDb).filter((i) => i.parentId === folder.id)
+    assert(kids.length === STRUCTURE_BEATS['nf-argument'].length, 'apply-overlay inserts all sections')
+  }
 
   const { db, paths } = projectService.requireCurrent()
   const doc = res.tree.find((i) => i.type === 'document')!

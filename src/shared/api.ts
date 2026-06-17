@@ -139,6 +139,7 @@ export interface WProcessorAPI {
     setCollapsed(id: string, collapsed: boolean): Promise<void>
     remove(id: string): Promise<BinderItem[]>
     move(input: BinderMoveInput): Promise<BinderItem[]>
+    applyOverlay(overlay: StructureOverlay): Promise<{ folderId: string; tree: BinderItem[] }>
   }
   document: {
     read(id: string): Promise<DocumentContent | null>

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { ProjectSettings } from '@shared/types'
+import { OVERLAYS_BY_TYPE, OVERLAY_LABELS, type StructureOverlay } from '@shared/api'
 import { useStore } from '../store/useStore'
 
 interface Props {
@@ -9,9 +11,28 @@ interface Props {
 export default function SettingsDialog({ onClose }: Props): JSX.Element {
   const meta = useStore((s) => s.meta)
   const setMeta = useStore((s) => s.setMeta)
+  const setTree = useStore((s) => s.setTree)
+  const select = useStore((s) => s.select)
+  const [overlay, setOverlay] = useState<StructureOverlay | ''>('')
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false)
   if (!meta) return <></>
   const s = meta.settings
   const m = s.manuscript
+  const overlaysForType = (OVERLAYS_BY_TYPE[meta.type] ?? []) as StructureOverlay[]
+
+  const addOutline = async (): Promise<void> => {
+    if (!overlay) return
+    setAdding(true)
+    try {
+      const { folderId, tree } = await window.api.binder.applyOverlay(overlay)
+      setTree(tree)
+      select(folderId)
+      setAdded(true)
+    } finally {
+      setAdding(false)
+    }
+  }
 
   const save = async (patch: Partial<ProjectSettings>): Promise<void> => {
     setMeta(await window.api.project.updateSettings(patch))
@@ -113,6 +134,36 @@ export default function SettingsDialog({ onClose }: Props): JSX.Element {
               />
             </label>
           </div>
+
+          {overlaysForType.length > 0 && (
+            <>
+              <h4>Structure</h4>
+              <p className="muted settings-note">
+                Add a planning outline of placeholder sections to this project. It appears as
+                an “Outline — …” folder you can rearrange or delete.
+              </p>
+              <div className="location-row">
+                <select
+                  value={overlay}
+                  onChange={(e) => {
+                    setOverlay(e.target.value as StructureOverlay | '')
+                    setAdded(false)
+                  }}
+                >
+                  <option value="">Choose an outline…</option>
+                  {overlaysForType.map((v) => (
+                    <option key={v} value={v}>
+                      {OVERLAY_LABELS[v]}
+                    </option>
+                  ))}
+                </select>
+                <button onClick={addOutline} disabled={!overlay || adding}>
+                  {adding ? 'Adding…' : 'Add outline'}
+                </button>
+                {added && <span className="muted">Added ✓</span>}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="modal-foot">

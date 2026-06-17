@@ -29,7 +29,8 @@ const api: WProcessorAPI = {
     setStatus: (id, statusId) => ipcRenderer.invoke('binder:setStatus', id, statusId),
     setCollapsed: (id, collapsed) => ipcRenderer.invoke('binder:setCollapsed', id, collapsed),
     remove: (id) => ipcRenderer.invoke('binder:remove', id),
-    move: (input) => ipcRenderer.invoke('binder:move', input)
+    move: (input) => ipcRenderer.invoke('binder:move', input),
+    applyOverlay: (overlay) => ipcRenderer.invoke('binder:applyOverlay', overlay)
   },
   document: {
     read: (id) => ipcRenderer.invoke('document:read', id),
