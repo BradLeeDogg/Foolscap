@@ -541,6 +541,39 @@ fieldset.field {
   margin-top: 1em;
 }
 
+/* track changes: suggesting bar + insertion/deletion marks */
+.tc-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--card);
+}
+.tc-bar .tc-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+.tc-bar .tc-label.on {
+  color: var(--accent);
+}
+.tc-bar button {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+}
+.tc-spacer {
+  margin-left: auto;
+}
+.manuscript .tc-ins {
+  color: #1a7f37;
+  text-decoration: underline;
+  text-decoration-color: #1a7f37;
+}
+.manuscript .tc-del {
+  color: #b00020;
+  text-decoration: line-through;
+}
+
 /* comment mark + footnote marker inside the manuscript */
 .manuscript .ProseMirror {
   counter-reset: footnote;

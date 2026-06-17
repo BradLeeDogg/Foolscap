@@ -19,6 +19,7 @@ import {
   compileToPdfBuffer
 } from './services/compile'
 import { cycleElement, enterElement, SCREENPLAY_ELEMENTS } from '@shared/screenplay'
+import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/trackchanges'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
@@ -33,7 +34,7 @@ import {
 } from './services/transcripts'
 import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
-import type { DocumentContent } from '@shared/types'
+import type { DocumentContent, ProseMirrorNode } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 
 const log: string[] = []
@@ -322,6 +323,45 @@ async function runChecks(): Promise<void> {
   assert(
     spHtml.includes('class="sp sp-scene"') && spHtml.includes('sp-character'),
     'screenplay elements export with their element classes'
+  )
+
+  // Track changes: resolution transforms + export drops deletions.
+  const tcDoc: ProseMirrorNode = {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Keep ' },
+          { type: 'text', text: 'added ', marks: [{ type: 'insertion' }] },
+          { type: 'text', text: 'removed ', marks: [{ type: 'deletion' }] },
+          { type: 'text', text: 'tail' }
+        ]
+      }
+    ]
+  }
+  assert(hasTrackedChanges(tcDoc), 'detects tracked changes')
+  const acc = JSON.stringify(acceptAllChanges(tcDoc))
+  assert(
+    acc.includes('added') && !acc.includes('removed') && !acc.includes('insertion'),
+    'accept keeps insertions (unmarked) and drops deletions'
+  )
+  assert(!hasTrackedChanges(acceptAllChanges(tcDoc)), 'no changes remain after accept')
+  const rej = JSON.stringify(rejectAllChanges(tcDoc))
+  assert(
+    rej.includes('removed') && !rej.includes('added') && !rej.includes('deletion'),
+    'reject drops insertions and keeps originals (unmarked)'
+  )
+  await writeDocument(paths.root, 'tc-export-test', { version: DOCUMENT_CONTENT_VERSION, doc: tcDoc })
+  const tcHtml = await compileToHtml(paths.root, {
+    entries: [{ docId: 'tc-export-test' }],
+    preset: COMPILE_PRESETS.shunn,
+    meta: { title: 'X', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  })
+  assert(
+    tcHtml.includes('added') && tcHtml.includes('tail') && !tcHtml.includes('removed'),
+    'compiled export excludes deletion-marked text'
   )
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')

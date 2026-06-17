@@ -5,13 +5,14 @@ import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import type { JSONContent } from '@tiptap/core'
-import type { DocumentContent, ManuscriptDefaults } from '@shared/types'
+import type { DocumentContent, ManuscriptDefaults, ProseMirrorNode } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 import { SCREENPLAY_ELEMENTS, SCREENPLAY_LABELS, type ScreenplayElement } from '@shared/screenplay'
 import { useStore } from '../store/useStore'
 import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
 import { Screenplay } from '../editor/screenplay'
+import { Deletion, Insertion, TrackChanges, hasTrackedChanges } from '../editor/trackchanges'
 import { listComments, listFootnotes } from '../editor/annotations'
 import { playKeyClick } from '../lib/typewriter'
 import AnnotationsPanel from './AnnotationsPanel'
@@ -71,6 +72,9 @@ export default function DocumentEditor({
   const [spMode, setSpMode] = useState(false)
   const [spEl, setSpEl] = useState<ScreenplayElement | null>(null)
   const spModeRef = useRef(false)
+  const [suggesting, setSuggesting] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const suggestingRef = useRef(false)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -84,6 +88,9 @@ export default function DocumentEditor({
       Comment,
       Footnote,
       Screenplay,
+      Insertion,
+      Deletion,
+      TrackChanges,
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
@@ -142,11 +149,13 @@ export default function DocumentEditor({
       saveTimer.current = null
     }
     try {
+      const json = editor.getJSON()
       const res = await window.api.document.write(docId, {
         version: DOCUMENT_CONTENT_VERSION,
-        doc: editor.getJSON() as never,
+        doc: json as never,
         mode: spModeRef.current ? 'screenplay' : 'prose'
       })
+      setHasChanges(hasTrackedChanges(json as unknown as ProseMirrorNode))
       dirtyRef.current = false
       setItemWordCount(docId, res.wordCount) // keep project/session totals live
       if (active) {
@@ -170,6 +179,8 @@ export default function DocumentEditor({
       setSpMode(on)
       editor.commands.setScreenplayEnabled(on)
       setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
+      editor.commands.setSuggesting(suggestingRef.current)
+      setHasChanges(content ? hasTrackedChanges(content.doc) : false)
       dirtyRef.current = false
       const words = editor.storage.characterCount.words()
       onWords?.(words)
@@ -207,6 +218,21 @@ export default function DocumentEditor({
   const applyElement = (kind: ScreenplayElement): void => {
     editor?.chain().focus().setScreenplayElement(kind).run()
     setSpEl(kind)
+  }
+  const toggleSuggesting = (): void => {
+    if (!editor) return
+    const on = !suggestingRef.current
+    suggestingRef.current = on
+    setSuggesting(on)
+    editor.commands.setSuggesting(on)
+  }
+  const acceptAll = (): void => {
+    editor?.chain().focus().acceptAllChanges().run()
+    setHasChanges(false)
+  }
+  const rejectAll = (): void => {
+    editor?.chain().focus().rejectAllChanges().run()
+    setHasChanges(false)
   }
 
   const addComment = (): void => {
@@ -259,6 +285,13 @@ export default function DocumentEditor({
       {!hideNotes && (
         <div className="editor-toggles">
           <button
+            className={`editor-toggle ${suggesting ? 'on' : ''}`}
+            onClick={toggleSuggesting}
+            title="Suggesting — record edits as tracked changes"
+          >
+            Suggesting
+          </button>
+          <button
             className={`editor-toggle ${spMode ? 'on' : ''}`}
             onClick={toggleScreenplay}
             title="Screenplay formatting (Tab cycles elements, Enter starts the next)"
@@ -267,6 +300,20 @@ export default function DocumentEditor({
           </button>
           <button className="editor-toggle" onClick={() => setShowAnnot((v) => !v)}>
             Notes{annotCount ? ` · ${annotCount}` : ''}
+          </button>
+        </div>
+      )}
+      {(suggesting || hasChanges) && !embedded && (
+        <div className="tc-bar">
+          <span className={`tc-label ${suggesting ? 'on' : ''}`}>
+            {suggesting ? '● Suggesting' : 'Tracked changes'}
+          </span>
+          <span className="tc-spacer" />
+          <button onClick={acceptAll} disabled={!hasChanges} title="Accept all changes">
+            Accept all
+          </button>
+          <button onClick={rejectAll} disabled={!hasChanges} title="Reject all changes">
+            Reject all
           </button>
         </div>
       )}

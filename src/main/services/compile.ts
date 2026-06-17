@@ -38,6 +38,7 @@ function inlineRuns(
   for (const n of nodes ?? []) {
     if (n.type === 'text' && typeof n.text === 'string') {
       const marks = (n.marks ?? []).map((m) => m.type)
+      if (marks.includes('deletion')) continue // resolved-out suggestion
       runs.push(
         new TextRun({
           text: fmt?.upper ? n.text.toUpperCase() : n.text,
@@ -270,8 +271,9 @@ function inlineHtml(nodes: ProseMirrorNode[] | undefined, notes: string[]): stri
   let html = ''
   for (const n of nodes ?? []) {
     if (n.type === 'text' && typeof n.text === 'string') {
-      let t = esc(n.text)
       const marks = (n.marks ?? []).map((m) => m.type)
+      if (marks.includes('deletion')) continue // resolved-out suggestion
+      let t = esc(n.text)
       if (marks.includes('bold')) t = `<strong>${t}</strong>`
       if (marks.includes('italic')) t = `<em>${t}</em>`
       if (marks.includes('underline')) t = `<u>${t}</u>`
