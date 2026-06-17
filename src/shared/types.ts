@@ -51,6 +51,8 @@ export interface DocumentContent {
   version: number
   /** Root ProseMirror doc node. */
   doc: ProseMirrorNode
+  /** Editing/formatting mode for this document. Defaults to prose. */
+  mode?: 'prose' | 'screenplay'
 }
 
 /** Manuscript "paper" defaults — also the default export layout. */

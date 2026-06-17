@@ -469,6 +469,77 @@ fieldset.field {
   background: var(--card);
   border: 1px solid var(--rule-strong);
 }
+.editor-toggles {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+.editor-toggle {
+  font-size: 0.76rem;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+}
+.editor-toggle.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* screenplay element toolbar + on-screen layout (mirrors SCREENPLAY_STYLES) */
+.sp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--card);
+}
+.sp-toolbar button {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+}
+.sp-toolbar button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sp-hint {
+  margin-left: auto;
+  font-size: 0.72rem;
+}
+.manuscript.screenplay .ProseMirror {
+  font-family: 'Courier New', Courier, monospace;
+}
+.manuscript.screenplay .ProseMirror p {
+  text-indent: 0;
+  margin: 0 0 0.4em 0;
+}
+.manuscript.screenplay .ProseMirror p.sp-scene {
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 1em;
+}
+.manuscript.screenplay .ProseMirror p.sp-character {
+  text-transform: uppercase;
+  margin-left: 2in;
+  margin-top: 1em;
+}
+.manuscript.screenplay .ProseMirror p.sp-dialogue {
+  margin-left: 1in;
+  margin-right: 1.5in;
+}
+.manuscript.screenplay .ProseMirror p.sp-parenthetical {
+  margin-left: 1.5in;
+  margin-right: 2in;
+  font-style: italic;
+}
+.manuscript.screenplay .ProseMirror p.sp-transition {
+  text-transform: uppercase;
+  text-align: right;
+  margin-top: 1em;
+}
 
 /* comment mark + footnote marker inside the manuscript */
 .manuscript .ProseMirror {

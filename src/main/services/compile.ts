@@ -15,6 +15,7 @@ import {
 import archiver from 'archiver'
 import { randomUUID } from 'crypto'
 import type { CompilePreset, CompileRequest, ProseMirrorNode } from '@shared/types'
+import { SCREENPLAY_ELEMENTS, SCREENPLAY_STYLES, isScreenplayElement } from '@shared/screenplay'
 import { countWords, readDocument } from './documents'
 import { writeFileAtomic } from './atomic'
 
@@ -30,7 +31,8 @@ interface FootnoteStore {
 
 function inlineRuns(
   nodes: ProseMirrorNode[] | undefined,
-  fns: FootnoteStore
+  fns: FootnoteStore,
+  fmt?: { upper?: boolean; bold?: boolean; italics?: boolean }
 ): (TextRun | FootnoteReferenceRun)[] {
   const runs: (TextRun | FootnoteReferenceRun)[] = []
   for (const n of nodes ?? []) {
@@ -38,9 +40,9 @@ function inlineRuns(
       const marks = (n.marks ?? []).map((m) => m.type)
       runs.push(
         new TextRun({
-          text: n.text,
-          bold: marks.includes('bold'),
-          italics: marks.includes('italic'),
+          text: fmt?.upper ? n.text.toUpperCase() : n.text,
+          bold: marks.includes('bold') || fmt?.bold,
+          italics: marks.includes('italic') || fmt?.italics,
           underline: marks.includes('underline') ? {} : undefined
         })
       )
@@ -69,11 +71,32 @@ function blockParagraphs(
   const indent = { firstLine: convertInchesToTwip(preset.firstLineIndentInches) }
   for (const node of content ?? []) {
     switch (node.type) {
-      case 'paragraph':
-        out.push(
-          new Paragraph({ children: inlineRuns(node.content, fns), spacing: bodySpacing(preset), indent })
-        )
+      case 'paragraph': {
+        const sp = node.attrs?.sp
+        if (isScreenplayElement(sp)) {
+          const st = SCREENPLAY_STYLES[sp]
+          out.push(
+            new Paragraph({
+              children: inlineRuns(node.content, fns, {
+                upper: st.upper,
+                bold: st.bold,
+                italics: st.italic
+              }),
+              spacing: bodySpacing(preset),
+              alignment: st.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+              indent: {
+                left: convertInchesToTwip(st.leftIn),
+                right: convertInchesToTwip(st.rightIn)
+              }
+            })
+          )
+        } else {
+          out.push(
+            new Paragraph({ children: inlineRuns(node.content, fns), spacing: bodySpacing(preset), indent })
+          )
+        }
         break
+      }
       case 'heading':
         out.push(
           new Paragraph({
@@ -267,9 +290,12 @@ function blockHtml(content: ProseMirrorNode[] | undefined, notes: string[]): str
   let html = ''
   for (const node of content ?? []) {
     switch (node.type) {
-      case 'paragraph':
-        html += `<p>${inlineHtml(node.content, notes)}</p>`
+      case 'paragraph': {
+        const sp = node.attrs?.sp
+        const cls = isScreenplayElement(sp) ? ` class="sp sp-${sp}"` : ''
+        html += `<p${cls}>${inlineHtml(node.content, notes)}</p>`
         break
+      }
       case 'heading':
         html += `<h2>${inlineHtml(node.content, notes)}</h2>`
         break
@@ -338,9 +364,17 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
   }
 
   const indent = preset.firstLineIndentInches
+  const spCss = SCREENPLAY_ELEMENTS.map((k) => {
+    const s = SCREENPLAY_STYLES[k]
+    return `p.sp-${k}{margin-left:${s.leftIn}in;margin-right:${s.rightIn}in;text-align:${s.align};${
+      s.upper ? 'text-transform:uppercase;' : ''
+    }${s.bold ? 'font-weight:700;' : ''}${s.italic ? 'font-style:italic;' : ''}}`
+  }).join('\n')
   const css = `
     body { font-family: '${preset.font}', Times, serif; font-size: ${preset.fontSizePt}pt; line-height: ${preset.lineSpacing}; color: #000; }
     p { margin: 0; text-indent: ${indent}in; }
+    p.sp { text-indent: 0; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; }
+    ${spCss}
     p.scene-break, .title-page .title, .byauthor, .wc { text-indent: 0; }
     h1.chapter { page-break-before: always; text-align: center; margin: 2in 0 1in; font-size: ${preset.fontSizePt + 2}pt; }
     h2 { text-indent: 0; font-size: ${preset.fontSizePt}pt; }

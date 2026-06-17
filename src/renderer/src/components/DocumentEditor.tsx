@@ -5,11 +5,13 @@ import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import type { JSONContent } from '@tiptap/core'
-import type { ManuscriptDefaults } from '@shared/types'
+import type { DocumentContent, ManuscriptDefaults } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
+import { SCREENPLAY_ELEMENTS, SCREENPLAY_LABELS, type ScreenplayElement } from '@shared/screenplay'
 import { useStore } from '../store/useStore'
 import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
+import { Screenplay } from '../editor/screenplay'
 import { listComments, listFootnotes } from '../editor/annotations'
 import { playKeyClick } from '../lib/typewriter'
 import AnnotationsPanel from './AnnotationsPanel'
@@ -66,6 +68,9 @@ export default function DocumentEditor({
   const setItemWordCount = useStore((s) => s.setItemWordCount)
 
   const [showAnnot, setShowAnnot] = useState(false)
+  const [spMode, setSpMode] = useState(false)
+  const [spEl, setSpEl] = useState<ScreenplayElement | null>(null)
+  const spModeRef = useRef(false)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -78,6 +83,7 @@ export default function DocumentEditor({
       CharacterCount,
       Comment,
       Footnote,
+      Screenplay,
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
@@ -102,6 +108,7 @@ export default function DocumentEditor({
       }
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => void save(), debounceMs)
+      if (spModeRef.current) setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
       centerCaret()
     },
     onSelectionUpdate: ({ editor }) => {
@@ -111,6 +118,7 @@ export default function DocumentEditor({
           from === to ? 0 : countWords(editor.state.doc.textBetween(from, to, ' '))
         )
       }
+      if (spModeRef.current) setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
       centerCaret()
     }
   })
@@ -136,7 +144,8 @@ export default function DocumentEditor({
     try {
       const res = await window.api.document.write(docId, {
         version: DOCUMENT_CONTENT_VERSION,
-        doc: editor.getJSON() as never
+        doc: editor.getJSON() as never,
+        mode: spModeRef.current ? 'screenplay' : 'prose'
       })
       dirtyRef.current = false
       setItemWordCount(docId, res.wordCount) // keep project/session totals live
@@ -156,6 +165,11 @@ export default function DocumentEditor({
     window.api.document.read(docId).then((content) => {
       if (cancelled) return
       editor.commands.setContent((content?.doc as JSONContent) ?? EMPTY_DOC, false)
+      const on = (content as DocumentContent | null)?.mode === 'screenplay'
+      spModeRef.current = on
+      setSpMode(on)
+      editor.commands.setScreenplayEnabled(on)
+      setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
       dirtyRef.current = false
       const words = editor.storage.characterCount.words()
       onWords?.(words)
@@ -172,6 +186,28 @@ export default function DocumentEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, editor])
+
+  const scheduleSave = (): void => {
+    dirtyRef.current = true
+    if (active) setSaveState('saving')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => void save(), debounceMs)
+  }
+  const toggleScreenplay = (): void => {
+    if (!editor) return
+    const on = !spModeRef.current
+    spModeRef.current = on
+    setSpMode(on)
+    editor.commands.setScreenplayEnabled(on)
+    // Seed the current line as a scene heading so a fresh script starts cleanly.
+    if (on && !editor.getAttributes('paragraph').sp) editor.commands.setScreenplayElement('scene')
+    setSpEl((editor.getAttributes('paragraph').sp as ScreenplayElement) ?? null)
+    scheduleSave()
+  }
+  const applyElement = (kind: ScreenplayElement): void => {
+    editor?.chain().focus().setScreenplayElement(kind).run()
+    setSpEl(kind)
+  }
 
   const addComment = (): void => {
     if (!editor || editor.state.selection.empty) return
@@ -211,7 +247,7 @@ export default function DocumentEditor({
       <div className="editor-embedded">
         {bubble}
         <div className="paper paper-embedded" style={style}>
-          <EditorContent editor={editor} className="manuscript" />
+          <EditorContent editor={editor} className={`manuscript ${spMode ? 'screenplay' : ''}`} />
         </div>
       </div>
     )
@@ -221,14 +257,38 @@ export default function DocumentEditor({
     <div className="editor-pane">
       {bubble}
       {!hideNotes && (
-        <button className="annot-toggle" onClick={() => setShowAnnot((v) => !v)}>
-          Notes{annotCount ? ` · ${annotCount}` : ''}
-        </button>
+        <div className="editor-toggles">
+          <button
+            className={`editor-toggle ${spMode ? 'on' : ''}`}
+            onClick={toggleScreenplay}
+            title="Screenplay formatting (Tab cycles elements, Enter starts the next)"
+          >
+            Screenplay
+          </button>
+          <button className="editor-toggle" onClick={() => setShowAnnot((v) => !v)}>
+            Notes{annotCount ? ` · ${annotCount}` : ''}
+          </button>
+        </div>
+      )}
+      {spMode && !embedded && (
+        <div className="sp-toolbar">
+          {SCREENPLAY_ELEMENTS.map((k) => (
+            <button
+              key={k}
+              className={spEl === k ? 'on' : ''}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => applyElement(k)}
+            >
+              {SCREENPLAY_LABELS[k]}
+            </button>
+          ))}
+          <span className="sp-hint muted">Tab cycles · Enter = next</span>
+        </div>
       )}
       <div className="editor-stage">
         <div className={`editor-scroll ${typewriter ? 'typewriter' : ''}`} ref={scrollRef}>
           <div className="paper" style={style}>
-            <EditorContent editor={editor} className="manuscript" />
+            <EditorContent editor={editor} className={`manuscript ${spMode ? 'screenplay' : ''}`} />
           </div>
         </div>
         {showAnnot && editor && <AnnotationsPanel editor={editor} onClose={() => setShowAnnot(false)} />}

@@ -12,7 +12,13 @@ import { searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
 import { createSource, extractReadable, listSources } from './services/sources'
 import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } from './services/factcheck'
-import { compileToDocxBuffer, compileToEpubBuffer, compileToPdfBuffer } from './services/compile'
+import {
+  compileToDocxBuffer,
+  compileToEpubBuffer,
+  compileToHtml,
+  compileToPdfBuffer
+} from './services/compile'
+import { cycleElement, enterElement, SCREENPLAY_ELEMENTS } from '@shared/screenplay'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
@@ -28,6 +34,7 @@ import {
 import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
+import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 
 const log: string[] = []
 function assert(cond: unknown, msg: string): void {
@@ -287,6 +294,34 @@ async function runChecks(): Promise<void> {
   assert(
     epub.length > 500 && epub[0] === 0x50 && epub[1] === 0x4b && epub.includes('application/epub+zip'),
     'compiled ePub is a zip declaring the epub mimetype'
+  )
+
+  // Screenplay: element model + export carry their classes/format.
+  assert(cycleElement(null, 1) === 'scene', 'cycle from none → first element')
+  assert(cycleElement('transition', 1) === 'scene', 'Tab cycle wraps around')
+  assert(cycleElement('scene', -1) === 'transition', 'Shift-Tab cycles backward and wraps')
+  assert(enterElement('character') === 'dialogue', 'Enter after a character line → dialogue')
+  assert(enterElement('scene') === 'action', 'Enter after a scene heading → action')
+  assert(SCREENPLAY_ELEMENTS.length === 6, 'six screenplay elements')
+  await writeDocument(paths.root, 'sp-export-test', {
+    version: DOCUMENT_CONTENT_VERSION,
+    doc: {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { sp: 'scene' }, content: [{ type: 'text', text: 'INT. OFFICE - DAY' }] },
+        { type: 'paragraph', attrs: { sp: 'character' }, content: [{ type: 'text', text: 'Alex' }] }
+      ]
+    }
+  })
+  const spHtml = await compileToHtml(paths.root, {
+    entries: [{ docId: 'sp-export-test' }],
+    preset: COMPILE_PRESETS.technical,
+    meta: { title: 'Script', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  })
+  assert(
+    spHtml.includes('class="sp sp-scene"') && spHtml.includes('sp-character'),
+    'screenplay elements export with their element classes'
   )
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')
