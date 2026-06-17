@@ -43,11 +43,10 @@ and `better-sqlite3` for a fast local index. Packaging via `electron-builder`.
 
 ## Prerequisites
 
-- **Node.js 18+** and npm.
-- Native modules (`better-sqlite3`) are compiled/installed for Electron during
-  `npm install`. On **Windows**, if no prebuilt binary is fetched you’ll need the
-  **Visual Studio Build Tools** (“Desktop development with C++”) and Python — see
-  Troubleshooting below.
+- **Node.js 18–22** and npm. (Node 24 also works; see the note below.)
+- The one native module (`better-sqlite3`) is installed as a **prebuilt Electron
+  binary** — the included `.npmrc` points npm at Electron’s prebuilds, so **no
+  Visual Studio / C++ compiler is required** in the normal case.
 
 ## Getting started (development)
 
@@ -108,10 +107,22 @@ electron-builder.yml   Packaging configuration
 
 ## Troubleshooting
 
-- **`npm install` fails building `better-sqlite3` (node-gyp errors) on Windows** —
-  install the **Visual Studio Build Tools** with the “Desktop development with
-  C++” workload and Python 3, then re‑run `npm install`. You can also force a
-  rebuild with `npm run rebuild`.
+- **`npm install` tries to compile `better-sqlite3` / “Could not find any Visual
+  Studio installation”** — this means the prebuilt binary wasn’t used. Make sure
+  you’re installing from the project root (so the included `.npmrc` is picked up;
+  `npm config get runtime` should print `electron`). If a previous install was
+  interrupted, delete the partially‑written `node_modules` folder and run
+  `npm install` again. Only as a last resort (e.g. no matching prebuilt) do you
+  need the **Visual Studio Build Tools** (“Desktop development with C++”) + Python.
+- **`'electron-vite' is not recognized`** — `npm install` didn’t finish (usually
+  because of the native‑module error above). Fix the install first; `electron-vite`
+  is a dev dependency that only exists once `npm install` completes successfully.
+- **`npm warn cleanup Failed to remove … EPERM`** — Windows had files locked
+  (often an editor, antivirus, or OneDrive sync on `Downloads`). Close those, and
+  prefer a short, non‑synced path like `C:\dev\WProcessor`. Then delete
+  `node_modules` and re‑run `npm install`.
+- **Node 24 note** — everything is JS except the prebuilt SQLite binary, so Node
+  24 works. If you hit an unrelated tooling hiccup, Node 20 LTS is the safe choice.
 - **App launches but can’t open a project / native module error** — run
   `npm run rebuild` so `better-sqlite3` matches your Electron version.
 - **Spell‑check squiggles don’t appear** — the en‑US dictionary is fetched on
