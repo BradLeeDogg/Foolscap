@@ -148,6 +148,28 @@ export interface Source {
   createdAt: number
 }
 
+/** One line of an interview transcript. */
+export interface TranscriptSegment {
+  id: string
+  transcriptId: string
+  position: number
+  speaker: string
+  timestamp: string
+  text: string
+}
+
+/** An interview transcript: an ordered list of speaker/timestamp segments. */
+export interface Transcript {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface TranscriptWithSegments extends Transcript {
+  segments: TranscriptSegment[]
+}
+
 export type ClaimStatus = 'verified' | 'needs-sourcing' | 'disputed'
 
 /** A factual assertion in a document, tracked for fact-checking. */

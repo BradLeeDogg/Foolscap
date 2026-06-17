@@ -15,6 +15,16 @@ import { createClaim, linkSource, listClaims, listOutstanding, updateClaim } fro
 import { compileToDocxBuffer, compileToEpubBuffer, compileToPdfBuffer } from './services/compile'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
+import {
+  addSegment,
+  createTranscript,
+  getTranscript,
+  listTranscripts,
+  removeSegment,
+  removeTranscript,
+  replaceSegments,
+  updateSegment
+} from './services/transcripts'
 import { extractPlainText } from './services/documents'
 import { COMPILE_PRESETS } from '@shared/presets'
 import type { DocumentContent } from '@shared/types'
@@ -87,6 +97,34 @@ async function runChecks(): Promise<void> {
     }
     const kids = listBinder(liveDb).filter((i) => i.parentId === folder.id)
     assert(kids.length === STRUCTURE_BEATS['nf-argument'].length, 'apply-overlay inserts all sections')
+  }
+
+  // Transcript workspace: parse raw text, edit segments, and integrate with sources.
+  {
+    const { db: tdb } = projectService.requireCurrent()
+    const tr = createTranscript(tdb, 'Interview A')
+    const parsed = replaceSegments(
+      tdb,
+      tr.id,
+      '[00:12] Reporter: How did it start?\nSubject: In March.\nJust narration here.'
+    )
+    assert(parsed.segments.length === 3, 'transcript parsed three segments')
+    assert(
+      parsed.segments[0]!.timestamp === '00:12' && parsed.segments[0]!.speaker === 'Reporter',
+      'segment timestamp + speaker parsed'
+    )
+    assert(parsed.segments[2]!.speaker === '', 'narration line has no speaker')
+    assert(addSegment(tdb, tr.id).segments.length === 4, 'addSegment appends a segment')
+    updateSegment(tdb, parsed.segments[1]!.id, { text: 'It began in March.' })
+    assert(
+      getTranscript(tdb, tr.id)!.segments[1]!.text === 'It began in March.',
+      'updateSegment persists'
+    )
+    removeSegment(tdb, parsed.segments[1]!.id)
+    assert(getTranscript(tdb, tr.id)!.segments.length === 3, 'removeSegment drops one')
+    assert(listTranscripts(tdb).some((t) => t.id === tr.id), 'transcript is listed')
+    removeTranscript(tdb, tr.id)
+    assert(!listTranscripts(tdb).some((t) => t.id === tr.id), 'removeTranscript deletes it')
   }
 
   const { db, paths } = projectService.requireCurrent()

@@ -76,6 +76,18 @@ const api: WProcessorAPI = {
     importFile: () => ipcRenderer.invoke('source:importFile'),
     remove: (id) => ipcRenderer.invoke('source:remove', id)
   },
+  transcript: {
+    list: () => ipcRenderer.invoke('transcript:list'),
+    get: (id) => ipcRenderer.invoke('transcript:get', id),
+    create: (title) => ipcRenderer.invoke('transcript:create', title),
+    rename: (id, title) => ipcRenderer.invoke('transcript:rename', id, title),
+    remove: (id) => ipcRenderer.invoke('transcript:remove', id),
+    parse: (id, raw) => ipcRenderer.invoke('transcript:parse', id, raw),
+    addSegment: (id) => ipcRenderer.invoke('transcript:addSegment', id),
+    updateSegment: (segmentId, patch) =>
+      ipcRenderer.invoke('transcript:updateSegment', segmentId, patch),
+    removeSegment: (segmentId) => ipcRenderer.invoke('transcript:removeSegment', segmentId)
+  },
   factcheck: {
     listClaims: (docId) => ipcRenderer.invoke('factcheck:listClaims', docId),
     createClaim: (docId, text) => ipcRenderer.invoke('factcheck:createClaim', docId, text),

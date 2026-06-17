@@ -18,7 +18,9 @@ import type {
   SearchResult,
   Snapshot,
   Source,
-  SourceKind
+  SourceKind,
+  Transcript,
+  TranscriptWithSegments
 } from './types'
 
 export interface ManualSourceInput {
@@ -187,6 +189,21 @@ export interface WProcessorAPI {
     /** Opens a file picker; returns the new source, or null if cancelled. */
     importFile(): Promise<Source | null>
     remove(id: string): Promise<Source[]>
+  }
+  transcript: {
+    list(): Promise<Transcript[]>
+    get(id: string): Promise<TranscriptWithSegments | null>
+    create(title: string): Promise<TranscriptWithSegments>
+    rename(id: string, title: string): Promise<void>
+    remove(id: string): Promise<Transcript[]>
+    /** Replace all segments by parsing pasted raw text. */
+    parse(id: string, raw: string): Promise<TranscriptWithSegments>
+    addSegment(id: string): Promise<TranscriptWithSegments>
+    updateSegment(
+      segmentId: string,
+      patch: { speaker?: string; timestamp?: string; text?: string }
+    ): Promise<void>
+    removeSegment(segmentId: string): Promise<void>
   }
   factcheck: {
     listClaims(docId: string): Promise<ClaimWithSources[]>

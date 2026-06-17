@@ -22,6 +22,7 @@ import { createCollection, listCollections, removeCollection } from '../services
 import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
 import * as factcheck from '../services/factcheck'
+import * as transcripts from '../services/transcripts'
 import { compileToDocxFile, compileToEpubFile, compileToPdfFile } from '../services/compile'
 import { importFromFile, parseScrivener, type ScrivNode } from '../services/importer'
 import { basename } from 'path'
@@ -322,6 +323,36 @@ export function registerIpc(): void {
   ipcMain.handle('source:remove', (_e, id: string) => {
     const { db, paths } = projectService.requireCurrent()
     return sources.removeSource(db, paths.root, id)
+  })
+
+  // --- interview transcripts ------------------------------------------------
+  ipcMain.handle('transcript:list', () => transcripts.listTranscripts(projectService.requireCurrent().db))
+  ipcMain.handle('transcript:get', (_e, id: string) =>
+    transcripts.getTranscript(projectService.requireCurrent().db, id)
+  )
+  ipcMain.handle('transcript:create', (_e, title: string) =>
+    transcripts.createTranscript(projectService.requireCurrent().db, title)
+  )
+  ipcMain.handle('transcript:rename', (_e, id: string, title: string) => {
+    transcripts.renameTranscript(projectService.requireCurrent().db, id, title)
+  })
+  ipcMain.handle('transcript:remove', (_e, id: string) =>
+    transcripts.removeTranscript(projectService.requireCurrent().db, id)
+  )
+  ipcMain.handle('transcript:parse', (_e, id: string, raw: string) =>
+    transcripts.replaceSegments(projectService.requireCurrent().db, id, raw)
+  )
+  ipcMain.handle('transcript:addSegment', (_e, id: string) =>
+    transcripts.addSegment(projectService.requireCurrent().db, id)
+  )
+  ipcMain.handle(
+    'transcript:updateSegment',
+    (_e, segmentId: string, patch: { speaker?: string; timestamp?: string; text?: string }) => {
+      transcripts.updateSegment(projectService.requireCurrent().db, segmentId, patch)
+    }
+  )
+  ipcMain.handle('transcript:removeSegment', (_e, segmentId: string) => {
+    transcripts.removeSegment(projectService.requireCurrent().db, segmentId)
   })
 
   // --- fact-check packet ----------------------------------------------------

@@ -11,6 +11,7 @@ import FindPanel from './FindPanel'
 import Inspector from './Inspector'
 import SourcesPanel from './SourcesPanel'
 import FactCheckPanel from './FactCheckPanel'
+import TranscriptsPanel from './TranscriptsPanel'
 import CompileDialog from './CompileDialog'
 import SettingsDialog from './SettingsDialog'
 import CompositionMode from './CompositionMode'
@@ -52,6 +53,7 @@ export default function Workspace(): JSX.Element {
   const [showSources, setShowSources] = useState(false)
   // Journalism types open the fact-check packet by default.
   const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
+  const [showTranscripts, setShowTranscripts] = useState(false)
   const [showCompile, setShowCompile] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showQuickOpen, setShowQuickOpen] = useState(false)
@@ -150,6 +152,12 @@ export default function Workspace(): JSX.Element {
           <button className={showFactCheck ? 'on' : ''} onClick={() => setShowFactCheck((v) => !v)}>
             Fact-check
           </button>
+          <button
+            className={showTranscripts ? 'on' : ''}
+            onClick={() => setShowTranscripts((v) => !v)}
+          >
+            Transcripts
+          </button>
           <button className={showTargets ? 'on' : ''} onClick={() => setShowTargets((v) => !v)}>
             Targets
           </button>
@@ -231,6 +239,14 @@ export default function Workspace(): JSX.Element {
               <PanelResizeHandle className="resize-handle" />
               <Panel id="snapshots" order={9} defaultSize={24} minSize={16} maxSize={40} className="pane">
                 <SnapshotsPanel onClose={() => setShowSnapshots(false)} />
+              </Panel>
+            </>
+          )}
+          {showTranscripts && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="transcripts" order={10} defaultSize={30} minSize={22} maxSize={48} className="pane">
+                <TranscriptsPanel onClose={() => setShowTranscripts(false)} />
               </Panel>
             </>
           )}

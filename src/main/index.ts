@@ -114,7 +114,7 @@ app.whenReady().then(() => {
               const folder = S.getState().tree.find((t) => t.type === 'folder');
               if (folder) S.getState().select(folder.id);
               await step(() => {
-                const open = ['Find', 'Inspector', 'Sources', 'Fact-check', 'Compile'];
+                const open = ['Find', 'Go to', 'Inspector', 'Sources', 'Fact-check', 'Transcripts', 'Compile'];
                 document.querySelectorAll('button').forEach((b) => {
                   if (open.includes(b.textContent || '')) b.click();
                 });
@@ -130,7 +130,7 @@ app.whenReady().then(() => {
           })`
         )
         setTimeout(() => {
-          console.log('WP_SMOKE_WORKSPACE_OK: workspace, find, inspector, corkboard, outliner, split & composition mounted')
+          console.log('WP_SMOKE_WORKSPACE_OK: workspace, find, quick-open, inspector, sources, fact-check, transcripts, corkboard, outliner, split & composition mounted')
           app.quit()
         }, 4200)
       } catch (err) {

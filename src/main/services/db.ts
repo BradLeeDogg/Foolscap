@@ -128,6 +128,27 @@ function migrate(db: DB): void {
     `)
     db.pragma('user_version = 4')
   }
+  if (current < 5) {
+    db.exec(`
+      CREATE TABLE transcripts (
+        id         TEXT PRIMARY KEY,
+        title      TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE transcript_segments (
+        id            TEXT PRIMARY KEY,
+        transcript_id TEXT NOT NULL,
+        position      INTEGER NOT NULL,
+        speaker       TEXT NOT NULL DEFAULT '',
+        timestamp     TEXT NOT NULL DEFAULT '',
+        text          TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX idx_segments_transcript ON transcript_segments(transcript_id, position);
+    `)
+    db.pragma('user_version = 5')
+  }
 }
 
 // --- meta key/value helpers -------------------------------------------------
