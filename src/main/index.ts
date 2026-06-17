@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, Menu, MenuItem } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpc } from './ipc'
@@ -18,8 +18,27 @@ function createWindow(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      spellcheck: true
     }
+  })
+
+  // American-English spell check by default, with a suggestions context menu.
+  window.webContents.session.setSpellCheckerLanguages(['en-US'])
+  window.webContents.on('context-menu', (_e, params) => {
+    if (!params.misspelledWord) return
+    const menu = new Menu()
+    for (const s of params.dictionarySuggestions.slice(0, 5)) {
+      menu.append(new MenuItem({ label: s, click: () => window.webContents.replaceMisspelling(s) }))
+    }
+    if (params.dictionarySuggestions.length) menu.append(new MenuItem({ type: 'separator' }))
+    menu.append(
+      new MenuItem({
+        label: 'Add to dictionary',
+        click: () => window.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord)
+      })
+    )
+    menu.popup()
   })
 
   if (process.env['WP_SMOKE']) {

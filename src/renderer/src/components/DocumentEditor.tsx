@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore'
 import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
 import { listComments, listFootnotes } from '../editor/annotations'
+import { playKeyClick } from '../lib/typewriter'
 import AnnotationsPanel from './AnnotationsPanel'
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
@@ -80,6 +81,17 @@ export default function DocumentEditor({
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
+    editorProps: {
+      handleDOMEvents: {
+        keydown: (_view, event) => {
+          // Subtle keystroke sound when enabled (typing characters only).
+          if (event.key.length === 1 && useStore.getState().meta?.settings.typewriterSound) {
+            playKeyClick()
+          }
+          return false
+        }
+      }
+    },
     onUpdate: ({ editor }) => {
       dirtyRef.current = true
       const words = editor.storage.characterCount.words()

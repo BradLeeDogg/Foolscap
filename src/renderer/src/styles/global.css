@@ -856,6 +856,21 @@ button.on {
 .topbar-compile {
   padding: 0.35rem 0.9rem;
 }
+.settings-body {
+  padding: 1rem;
+  overflow: auto;
+}
+.settings-body h4 {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.settings-note {
+  font-size: 0.78rem;
+  margin: 0.5rem 0 1rem;
+}
 
 /* --- folder views (scrivenings / corkboard / outliner) ----- */
 .folder-view {
