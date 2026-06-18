@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -114,6 +114,68 @@ export default function Binder(): JSX.Element {
     setTree(await window.api.binder.list())
   }
 
+  // Roving focus: keep DOM focus on the selected row for keyboard nav + AT.
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  useEffect(() => {
+    if (selectedId) rowRefs.current.get(selectedId)?.focus()
+  }, [selectedId])
+
+  const selectAt = (i: number): void => {
+    const node = flattened[Math.max(0, Math.min(i, flattened.length - 1))]
+    if (node) select(node.id)
+  }
+  const moveSibling = async (item: FlatNode, dir: 'up' | 'down'): Promise<void> => {
+    const sibs = tree.filter((t) => t.parentId === item.parentId).sort((a, b) => a.position - b.position)
+    const cur = sibs.findIndex((s) => s.id === item.id)
+    const target = dir === 'up' ? cur - 1 : cur + 1
+    if (target < 0 || target >= sibs.length) return
+    setTree(await window.api.binder.move({ id: item.id, newParentId: item.parentId, newIndex: target }))
+  }
+
+  const onTreeKeyDown = (e: React.KeyboardEvent): void => {
+    if (renamingId) return
+    const idx = flattened.findIndex((f) => f.id === selectedId)
+    const cur = idx >= 0 ? flattened[idx] : null
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey) {
+      if (cur) {
+        e.preventDefault()
+        void moveSibling(cur, e.key === 'ArrowUp' ? 'up' : 'down')
+      }
+      return
+    }
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        selectAt(idx + 1)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        selectAt(idx < 0 ? 0 : idx - 1)
+        break
+      case 'ArrowRight':
+        if (cur?.type === 'folder' && cur.collapsed) void toggleCollapse(cur)
+        else if (cur) selectAt(idx + 1)
+        break
+      case 'ArrowLeft':
+        if (cur?.type === 'folder' && !cur.collapsed) void toggleCollapse(cur)
+        else if (cur?.parentId) select(cur.parentId)
+        break
+      case 'F2':
+        if (cur) {
+          e.preventDefault()
+          setRenamingId(cur.id)
+        }
+        break
+      case 'Delete':
+      case 'Backspace':
+        if (cur) {
+          e.preventDefault()
+          void removeItem(cur)
+        }
+        break
+    }
+  }
+
   const resetDrag = (): void => {
     setActiveId(null)
     setOverId(null)
@@ -163,7 +225,7 @@ export default function Binder(): JSX.Element {
         )}
       </div>
 
-      <div className="binder-tree">
+      <div className="binder-tree" role="tree" aria-label="Project binder" onKeyDown={onTreeKeyDown}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -181,6 +243,10 @@ export default function Binder(): JSX.Element {
                 depth={node.id === activeId && projected ? projected.depth : node.depth}
                 selected={node.id === selectedId}
                 renaming={node.id === renamingId}
+                onRef={(el) => {
+                  if (el) rowRefs.current.set(node.id, el)
+                  else rowRefs.current.delete(node.id)
+                }}
                 onSelect={() => select(node.id)}
                 onToggle={() => toggleCollapse(node)}
                 onStartRename={() => setRenamingId(node.id)}
@@ -204,6 +270,7 @@ interface RowProps {
   depth: number
   selected: boolean
   renaming: boolean
+  onRef: (el: HTMLDivElement | null) => void
   onSelect: () => void
   onToggle: () => void
   onStartRename: () => void
@@ -213,7 +280,7 @@ interface RowProps {
 
 function BinderRow(props: RowProps): JSX.Element {
   const { node, depth, selected, renaming } = props
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: node.id
   })
   const inputRef = useRef<HTMLInputElement>(null)
@@ -227,11 +294,18 @@ function BinderRow(props: RowProps): JSX.Element {
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el)
+        props.onRef(el)
+      }}
       style={style}
       className={`binder-row ${selected ? 'selected' : ''}`}
+      role="treeitem"
+      aria-level={depth + 1}
+      aria-selected={selected}
+      aria-expanded={node.type === 'folder' ? !node.collapsed : undefined}
+      tabIndex={selected ? 0 : -1}
       onClick={props.onSelect}
-      {...attributes}
       {...listeners}
     >
       {node.type === 'folder' ? (
