@@ -52,7 +52,7 @@ and `better-sqlite3` for a fast local index. Packaging via `electron-builder`.
 
 ```bash
 git clone <repo-url>
-cd WProcessor
+cd Foolscap
 git checkout claude/epic-archimedes-j9876k
 npm install
 npm run dev          # launches the app with hot reload
@@ -120,7 +120,7 @@ electron-builder.yml   Packaging configuration
   is a dev dependency that only exists once `npm install` completes successfully.
 - **`npm warn cleanup Failed to remove … EPERM`** — Windows had files locked
   (often an editor, antivirus, or OneDrive sync on `Downloads`). Close those, and
-  prefer a short, non‑synced path like `C:\dev\WProcessor`. Then delete
+  prefer a short, non‑synced path like `C:\dev\Foolscap`. Then delete
   `node_modules` and re‑run `npm install`.
 - **Node 24 note** — everything is JS except the prebuilt SQLite binary, so Node
   24 works. If you hit an unrelated tooling hiccup, Node 20 LTS is the safe choice.
