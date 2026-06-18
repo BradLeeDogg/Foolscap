@@ -1,5 +1,5 @@
-appId: com.wprocessor.app
-productName: WProcessor
+appId: com.foolscap.app
+productName: Foolscap
 directories:
   output: release
   buildResources: build
@@ -12,11 +12,18 @@ asarUnpack:
 win:
   target:
     - nsis
-  artifactName: ${productName}-${version}-setup.${ext}
+    - portable
+    - zip
+  # used by the .zip target (the portable "whole app" archive)
+  artifactName: ${productName}-${version}.${ext}
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+portable:
+  # a single self-contained .exe — the whole program in one file, no install
+  artifactName: ${productName}-${version}-portable.${ext}
 mac:
   target:
     - dmg

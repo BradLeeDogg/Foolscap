@@ -201,7 +201,7 @@ class ProjectService {
     await this.close()
     const paths = projectPaths(path)
     if (!(await pathExists(paths.db))) {
-      throw new Error('Not a WProcessor project (project.db not found)')
+      throw new Error('Not a Foolscap project (project.db not found)')
     }
     // Ensure subdirectories exist (older/partial projects may be missing some).
     for (const dir of projectDirs(path)) await fs.mkdir(dir, { recursive: true })

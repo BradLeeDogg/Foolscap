@@ -157,7 +157,7 @@ export interface BinderMoveInput {
 }
 
 /** The full preload bridge surface. Implemented by main IPC handlers. */
-export interface WProcessorAPI {
+export interface FoolscapAPI {
   /** Subscribe to native-menu commands (forwarded to the renderer command bus). */
   onMenuCommand(cb: (cmd: string) => void): void
   app: {

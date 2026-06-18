@@ -1,4 +1,4 @@
-name: Build Windows installer
+name: Build Foolscap (Windows)
 
 on:
   workflow_dispatch: {}
@@ -27,32 +27,39 @@ jobs:
       - name: Build main/preload/renderer
         run: npm run build
 
-      - name: Package Windows installer (unsigned)
+      - name: Package Windows app (installer + portable + zip, unsigned)
         run: npx electron-builder --win --publish never
 
       - name: Show build output
         run: dir release
         shell: cmd
 
-      - name: Upload installer as a workflow artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: WProcessor-Windows-installer
-          path: release/*.exe
+          name: Foolscap-Windows
+          path: |
+            release/*.exe
+            release/*.zip
           if-no-files-found: error
 
       # Also publish to a Release so there's a stable, click-to-download link.
-      - name: Publish installer to a Release
+      - name: Publish to a Release
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: win-latest
-          name: WProcessor — latest Windows build
+          name: Foolscap — latest Windows build
           body: |
-            Unsigned Windows installer, built automatically on a clean Windows VM
-            from branch `claude/epic-archimedes-j9876k`.
+            Unsigned Windows build, made automatically on a clean Windows VM
+            from branch `claude/epic-archimedes-j9876k`. Three ways to run it:
 
-            Double-click `WProcessor-<version>-setup.exe` to install. Because it
-            isn't code-signed, Windows SmartScreen may warn — choose
+            - `Foolscap-<version>-setup.exe` — installer.
+            - `Foolscap-<version>-portable.exe` — the whole program in one file; just run it (no install).
+            - `Foolscap-<version>.zip` — unzip anywhere and run `Foolscap.exe`.
+
+            Not code-signed, so Windows SmartScreen may warn — choose
             **More info → Run anyway**.
-          files: release/*.exe
+          files: |
+            release/*.exe
+            release/*.zip

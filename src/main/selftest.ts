@@ -241,7 +241,7 @@ async function runChecks(): Promise<void> {
     version: 1,
     doc: {
       type: 'doc',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world from WProcessor.' }] }]
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world from Foolscap.' }] }]
     }
   }
   await writeDocument(paths.root, doc.id, content)
@@ -270,12 +270,12 @@ async function runChecks(): Promise<void> {
   const info = await createBackup(paths.root, db)
   assert(existsSync(info.path) && info.sizeBytes > 0, 'backup zip written')
 
-  const hits = await searchProject(db, paths.root, { text: 'wprocessor' })
+  const hits = await searchProject(db, paths.root, { text: 'foolscap' })
   assert(hits.some((h) => h.itemId === doc.id && h.matches >= 1), 'full-text search finds a match')
   const miss = await searchProject(db, paths.root, { text: 'zzqqxnotpresent' })
   assert(miss.length === 0, 'search returns nothing for absent text')
 
-  const coll = createCollection(db, 'Mentions WProcessor', { text: 'wprocessor' })
+  const coll = createCollection(db, 'Mentions Foolscap', { text: 'foolscap' })
   assert(listCollections(db).length === 1, 'collection saved')
   removeCollection(db, coll.id)
   assert(listCollections(db).length === 0, 'collection removed')

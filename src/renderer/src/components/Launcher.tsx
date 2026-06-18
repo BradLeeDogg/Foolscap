@@ -86,7 +86,7 @@ export default function Launcher(): JSX.Element {
   return (
     <div className="launcher">
       <header className="launcher-head">
-        <h1>WProcessor</h1>
+        <h1>Foolscap</h1>
         <p className="muted">Nothing between you and the page.</p>
       </header>
 

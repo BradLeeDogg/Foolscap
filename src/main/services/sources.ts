@@ -123,7 +123,7 @@ function snapshotHtml(r: ReadableResult, url: string, capturedAt: number): strin
 
 /** Fetch a URL, clean it, store a readable snapshot, and record the source. */
 export async function captureUrl(db: DB, root: string, url: string): Promise<Source> {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (WProcessor research capture)' } })
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Foolscap research capture)' } })
   if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
   const html = await res.text()
   const readable = extractReadable(html, url)

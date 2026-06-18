@@ -1,4 +1,4 @@
-# WProcessor
+# Foolscap
 
 A calm, local‑first, Scrivener‑like writing studio for long‑form work — novels,
 journalism, essays, scripts‑in‑progress — built as a desktop app. Everything
@@ -65,7 +65,8 @@ platform‑specific binaries and are not committed (`release/` is gitignored).
 Build one on the target platform:
 
 ```bash
-npm run package:win   # Windows  → release\WProcessor-<version>-setup.exe (NSIS installer)
+npm run package:win   # Windows → release\ : Foolscap-<version>-setup.exe (installer),
+                      #           Foolscap-<version>-portable.exe (single-file), Foolscap-<version>.zip
 npm run package:dir   # current OS, unpacked folder (no installer) for quick testing
 ```
 

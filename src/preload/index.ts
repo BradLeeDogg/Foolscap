@@ -1,10 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { WProcessorAPI } from '@shared/api'
+import type { FoolscapAPI } from '@shared/api'
 
 // The single, typed surface between renderer and main. The renderer never
 // touches the filesystem, the database, or Node directly — only this bridge.
-const api: WProcessorAPI = {
+const api: FoolscapAPI = {
   onMenuCommand: (cb) => {
     ipcRenderer.on('menu-command', (_e, cmd: string) => cb(cmd))
   },

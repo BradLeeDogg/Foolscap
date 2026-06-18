@@ -1,8 +1,8 @@
 {
-  "name": "wprocessor",
+  "name": "foolscap",
   "version": "0.1.0",
-  "description": "A distraction-free, Scrivener-style long-form writing app",
-  "author": "WProcessor",
+  "description": "Foolscap — a distraction-free, Scrivener-style long-form writing app",
+  "author": "Foolscap",
   "license": "MIT",
   "main": "./out/main/index.js",
   "scripts": {

@@ -72,7 +72,7 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#f7f5ef', // calm "paper" tone so first paint isn't a white flash
-    title: 'WProcessor',
+    title: 'Foolscap',
     autoHideMenuBar: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -133,7 +133,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.wprocessor.app')
+  electronApp.setAppUserModelId('com.foolscap.app')
 
   app.on('browser-window-created', (_, win) => {
     optimizer.watchWindowShortcuts(win)
