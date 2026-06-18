@@ -144,14 +144,34 @@ export function registerIpc(): void {
     binder.setCollapsed(db, id, collapsed)
   })
 
-  ipcMain.handle('binder:remove', async (_e, id: string) => {
+  // Delete = move to Trash (recoverable). Files stay on disk until purged.
+  ipcMain.handle('binder:remove', (_e, id: string) => {
+    const { db } = projectService.requireCurrent()
+    binder.trashItem(db, id)
+    return binder.listBinder(db)
+  })
+  ipcMain.handle('binder:restore', (_e, id: string) => {
+    const { db } = projectService.requireCurrent()
+    binder.restoreItem(db, id)
+    return binder.listBinder(db)
+  })
+  ipcMain.handle('binder:listTrash', () => binder.listTrash(projectService.requireCurrent().db))
+  const purge = async (id: string): Promise<void> => {
     const { db, paths } = projectService.requireCurrent()
     const { deletedDocumentIds, deletedSnapshotIds } = binder.removeItem(db, id)
     await Promise.all([
       ...deletedDocumentIds.map((did) => fs.rm(documentFile(paths.root, did), { force: true })),
       ...deletedSnapshotIds.map((sid) => fs.rm(snapshotFile(paths.root, sid), { force: true }))
     ])
-    return binder.listBinder(db)
+  }
+  ipcMain.handle('binder:purge', async (_e, id: string) => {
+    await purge(id)
+    return binder.listTrash(projectService.requireCurrent().db)
+  })
+  ipcMain.handle('binder:emptyTrash', async () => {
+    const { db } = projectService.requireCurrent()
+    for (const t of binder.listTrash(db)) await purge(t.id)
+    return []
   })
 
   ipcMain.handle('binder:move', (_e, input: BinderMoveInput) => {

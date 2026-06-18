@@ -24,7 +24,9 @@ import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/t
 import { proofread, type Issue } from '@shared/proofreader'
 import { AME_TO_BRE, BRE_TO_AME } from '@shared/dialect'
 import { findRanges } from '@shared/find'
-import { mergeDocs } from '@shared/docops'
+import { mergeDocs, docLines } from '@shared/docops'
+import { diffLines } from '@shared/diff'
+import { trashItem, restoreItem, listTrash } from './services/binder'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
@@ -544,6 +546,27 @@ async function runChecks(): Promise<void> {
     const merged = mergeDocs(a, b)
     assert(merged.content!.length === 2, 'mergeDocs concatenates block content')
     assert(extractPlainText({ version: 1, doc: merged }).includes('one'), 'merged doc keeps first content')
+    assert(docLines(merged).length === 2 && docLines(merged)[0] === 'one', 'docLines yields one line per block')
+  }
+
+  // Line diff (Snapshots compare).
+  {
+    const ops = diffLines(['a', 'b', 'c'], ['a', 'x', 'c'])
+    assert(ops.some((o) => o.type === 'del' && o.text === 'b'), 'diffLines marks removed line')
+    assert(ops.some((o) => o.type === 'add' && o.text === 'x'), 'diffLines marks added line')
+    assert(ops.filter((o) => o.type === 'same').length === 2, 'diffLines keeps unchanged lines')
+  }
+
+  // Trash: soft-delete hides from the tree, restore brings it back, listTrash tracks it.
+  {
+    const { db: bdb } = projectService.requireCurrent()
+    const trashy = createItem(bdb, { type: 'document', title: 'Trash Me', parentId: null })
+    trashItem(bdb, trashy.id)
+    assert(!listBinder(bdb).some((i) => i.id === trashy.id), 'trashed item is hidden from the tree')
+    assert(listTrash(bdb).some((i) => i.id === trashy.id), 'trashed item appears in the Trash')
+    restoreItem(bdb, trashy.id)
+    assert(listBinder(bdb).some((i) => i.id === trashy.id), 'restore brings the item back')
+    assert(!listTrash(bdb).some((i) => i.id === trashy.id), 'restored item leaves the Trash')
   }
 
   const fromHtml = htmlToProseMirror('<h1>Heading</h1><p>Hello <strong>world</strong></p>')

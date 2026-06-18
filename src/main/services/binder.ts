@@ -122,6 +122,37 @@ export function setWordCount(db: DB, id: string, count: number): void {
   db.prepare('UPDATE binder_items SET word_count = ? WHERE id = ?').run(count, id)
 }
 
+/** Soft-delete: hide the item (and its subtree) from the tree, but keep it. */
+export function trashItem(db: DB, id: string): void {
+  db.prepare('UPDATE binder_items SET deleted = ?, updated_at = ? WHERE id = ?').run(now(), now(), id)
+}
+
+/** Restore a trashed item (to its parent, or the root if the parent is gone). */
+export function restoreItem(db: DB, id: string): void {
+  const item = getItem(db, id)
+  if (!item) return
+  let parentId = item.parentId
+  if (parentId) {
+    const parent = db.prepare('SELECT deleted FROM binder_items WHERE id = ?').get(parentId) as
+      | { deleted: number | null }
+      | undefined
+    if (!parent || parent.deleted != null) parentId = null
+  }
+  db.prepare('UPDATE binder_items SET deleted = NULL, parent_id = ?, updated_at = ? WHERE id = ?').run(
+    parentId,
+    now(),
+    id
+  )
+}
+
+/** Trashed items (the flagged roots), newest first. */
+export function listTrash(db: DB): BinderItem[] {
+  const rows = db
+    .prepare('SELECT * FROM binder_items WHERE deleted IS NOT NULL ORDER BY deleted DESC')
+    .all() as Array<Parameters<typeof rowToBinderItem>[0]>
+  return rows.map(rowToBinderItem)
+}
+
 /** Delete an item and its subtree. Returns ids whose files on disk must be removed. */
 export function removeItem(
   db: DB,

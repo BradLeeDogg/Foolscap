@@ -45,6 +45,26 @@ export default function Binder(): JSX.Element {
   const [overId, setOverId] = useState<string | null>(null)
   const [offsetLeft, setOffsetLeft] = useState(0)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [showTrash, setShowTrash] = useState(false)
+  const [trash, setTrash] = useState<BinderItem[]>([])
+
+  const openTrash = async (): Promise<void> => {
+    setTrash(await window.api.binder.listTrash())
+    setShowTrash(true)
+  }
+  const restoreFromTrash = async (id: string): Promise<void> => {
+    setTree(await window.api.binder.restore(id))
+    setTrash(await window.api.binder.listTrash())
+  }
+  const purgeFromTrash = async (id: string): Promise<void> => {
+    if (!window.confirm('Permanently delete this item and its files? This cannot be undone.')) return
+    setTrash(await window.api.binder.purge(id))
+  }
+  const emptyTrash = async (): Promise<void> => {
+    if (!window.confirm('Permanently delete everything in the Trash? This cannot be undone.')) return
+    await window.api.binder.emptyTrash()
+    setTrash([])
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -95,7 +115,7 @@ export default function Binder(): JSX.Element {
 
   const removeItem = async (item: BinderItem): Promise<void> => {
     const ok = window.confirm(
-      `Delete “${item.title}”${item.type === 'folder' ? ' and everything inside it' : ''}? This can be recovered from a backup, but not undone here.`
+      `Move “${item.title}”${item.type === 'folder' ? ' and everything inside it' : ''} to the Trash?`
     )
     if (!ok) return
     const next = await window.api.binder.remove(item.id)
@@ -223,13 +243,16 @@ export default function Binder(): JSX.Element {
           ⇲
         </button>
         <span className="spacer" />
+        <button title="Trash" onClick={openTrash}>
+          🗑
+        </button>
         {selectedItem && (
           <button
-            title="Delete selected"
+            title="Move selected to Trash"
             className="danger"
             onClick={() => removeItem(selectedItem)}
           >
-            🗑
+            ⌫
           </button>
         )}
       </div>
@@ -270,6 +293,42 @@ export default function Binder(): JSX.Element {
         </DndContext>
         {flattened.length === 0 && <p className="muted binder-empty">No items yet.</p>}
       </div>
+
+      {showTrash && (
+        <div className="modal-backdrop" onClick={() => setShowTrash(false)}>
+          <div className="modal trash-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-head">
+              <h3>Trash</h3>
+              <button className="icon" onClick={() => setShowTrash(false)}>
+                ×
+              </button>
+            </div>
+            {trash.length === 0 ? (
+              <p className="muted drawer-pad">Trash is empty.</p>
+            ) : (
+              <>
+                <ul className="trash-list">
+                  {trash.map((t) => (
+                    <li key={t.id}>
+                      <span className="row-icon">{t.type === 'folder' ? '📁' : '📄'}</span>
+                      <span className="trash-title">{t.title}</span>
+                      <button onClick={() => restoreFromTrash(t.id)}>Restore</button>
+                      <button className="danger" onClick={() => purgeFromTrash(t.id)}>
+                        Delete forever
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="drawer-pad">
+                  <button className="danger" onClick={emptyTrash}>
+                    Empty Trash
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

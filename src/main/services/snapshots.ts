@@ -66,6 +66,8 @@ export async function restoreSnapshot(
   if (!row) throw new Error('Snapshot not found')
   const content = await readJson<DocumentContent>(snapshotFile(root, snapshotId))
   if (!content) throw new Error('Snapshot file missing')
+  // Auto-snapshot the current text first, so a restore is itself reversible.
+  await createSnapshot(db, root, row.item_id, `Before restore — ${new Date().toLocaleString()}`)
   await writeDocument(root, row.item_id, content)
   setWordCount(db, row.item_id, countWords(content))
   return content

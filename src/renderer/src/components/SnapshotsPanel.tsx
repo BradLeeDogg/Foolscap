@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Snapshot } from '@shared/types'
+import { diffLines, type DiffOp } from '@shared/diff'
+import { docLines } from '@shared/docops'
 import { useStore } from '../store/useStore'
 
 interface Props {
@@ -16,6 +18,7 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
   const [list, setList] = useState<Snapshot[]>([])
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [diff, setDiff] = useState<{ name: string; ops: DiffOp[] } | null>(null)
 
   const refresh = (): void => {
     if (selectedId && isDocument) window.api.snapshot.list(selectedId).then(setList)
@@ -46,6 +49,16 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
 
   const remove = async (snap: Snapshot): Promise<void> => {
     setList(await window.api.snapshot.remove(snap.id))
+  }
+
+  const compare = async (snap: Snapshot): Promise<void> => {
+    if (!selectedId) return
+    const [snapC, curC] = await Promise.all([
+      window.api.snapshot.read(snap.id),
+      window.api.document.read(selectedId)
+    ])
+    if (!snapC || !curC) return
+    setDiff({ name: snap.name, ops: diffLines(docLines(snapC.doc), docLines(curC.doc)) })
   }
 
   return (
@@ -82,6 +95,7 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
                   </span>
                 </div>
                 <div className="snapshot-actions">
+                  <button onClick={() => compare(s)}>Compare</button>
                   <button onClick={() => restore(s)}>Restore</button>
                   <button className="danger" onClick={() => remove(s)}>
                     Delete
@@ -90,6 +104,24 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
               </li>
             ))}
           </ul>
+          {diff && (
+            <div className="snapshot-diff">
+              <div className="drawer-head">
+                <h4>vs. “{diff.name}”</h4>
+                <button className="icon" onClick={() => setDiff(null)}>
+                  ×
+                </button>
+              </div>
+              <div className="diff-body">
+                {diff.ops.map((op, i) => (
+                  <p key={i} className={`diff-line diff-${op.type}`}>
+                    {op.type === 'add' ? '+ ' : op.type === 'del' ? '− ' : '  '}
+                    {op.text || ' '}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </aside>

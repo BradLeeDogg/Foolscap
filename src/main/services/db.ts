@@ -158,6 +158,11 @@ function migrate(db: DB): void {
     `)
     db.pragma('user_version = 6')
   }
+  if (current < 7) {
+    // Soft delete: trashed items keep their row + files, hidden from the tree.
+    db.exec(`ALTER TABLE binder_items ADD COLUMN deleted INTEGER;`)
+    db.pragma('user_version = 7')
+  }
 }
 
 // --- meta key/value helpers -------------------------------------------------
@@ -215,7 +220,7 @@ export function rowToBinderItem(r: BinderRow): BinderItem {
 
 export function listBinder(db: DB): BinderItem[] {
   const rows = db
-    .prepare('SELECT * FROM binder_items ORDER BY parent_id, position')
+    .prepare('SELECT * FROM binder_items WHERE deleted IS NULL ORDER BY parent_id, position')
     .all() as BinderRow[]
   return rows.map(rowToBinderItem)
 }

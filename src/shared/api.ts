@@ -183,7 +183,16 @@ export interface WProcessorAPI {
     setLabel(id: string, labelId: string | null): Promise<void>
     setStatus(id: string, statusId: string | null): Promise<void>
     setCollapsed(id: string, collapsed: boolean): Promise<void>
+    /** Move an item (and its subtree) to the Trash. Returns the live tree. */
     remove(id: string): Promise<BinderItem[]>
+    /** Restore a trashed item. Returns the live tree. */
+    restore(id: string): Promise<BinderItem[]>
+    /** List trashed items (the flagged roots). */
+    listTrash(): Promise<BinderItem[]>
+    /** Permanently delete a trashed item + its files. Returns the trash list. */
+    purge(id: string): Promise<BinderItem[]>
+    /** Permanently delete everything in the Trash. */
+    emptyTrash(): Promise<BinderItem[]>
     move(input: BinderMoveInput): Promise<BinderItem[]>
     applyOverlay(overlay: StructureOverlay): Promise<{ folderId: string; tree: BinderItem[] }>
   }
