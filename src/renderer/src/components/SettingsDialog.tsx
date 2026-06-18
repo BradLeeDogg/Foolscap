@@ -97,6 +97,18 @@ export default function SettingsDialog({ onClose }: Props): JSX.Element {
           </p>
 
           <h4>Behavior</h4>
+          <div className="compile-fields">
+            <label>
+              Theme
+              <select
+                value={s.theme}
+                onChange={(e) => save({ theme: e.target.value as 'paper' | 'dark' })}
+              >
+                <option value="paper">Paper (light)</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+          </div>
           <label className="compile-check">
             <input
               type="checkbox"

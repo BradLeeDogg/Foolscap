@@ -117,7 +117,9 @@ const api: FoolscapAPI = {
   compile: {
     docx: (req) => ipcRenderer.invoke('compile:docx', req),
     pdf: (req) => ipcRenderer.invoke('compile:pdf', req),
-    epub: (req) => ipcRenderer.invoke('compile:epub', req)
+    epub: (req) => ipcRenderer.invoke('compile:epub', req),
+    markdown: (req) => ipcRenderer.invoke('compile:markdown', req),
+    text: (req) => ipcRenderer.invoke('compile:text', req)
   },
   importer: {
     file: (parentId) => ipcRenderer.invoke('import:file', parentId),

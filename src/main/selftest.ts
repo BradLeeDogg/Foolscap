@@ -17,7 +17,9 @@ import {
   compileToDocxBuffer,
   compileToEpubBuffer,
   compileToHtml,
-  compileToPdfBuffer
+  compileToMarkdown,
+  compileToPdfBuffer,
+  compileToText
 } from './services/compile'
 import { cycleElement, enterElement, SCREENPLAY_ELEMENTS } from '@shared/screenplay'
 import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/trackchanges'
@@ -412,6 +414,37 @@ async function runChecks(): Promise<void> {
   assert(
     tcHtml.includes('added') && tcHtml.includes('tail') && !tcHtml.includes('removed'),
     'compiled export excludes deletion-marked text'
+  )
+
+  // Markdown / plain-text export.
+  await writeDocument(paths.root, 'md-export-test', {
+    version: DOCUMENT_CONTENT_VERSION,
+    doc: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Section' }] },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Hello ' },
+            { type: 'text', text: 'world', marks: [{ type: 'bold' }] }
+          ]
+        }
+      ]
+    }
+  })
+  const plainReq = {
+    entries: [{ docId: 'md-export-test' }],
+    preset: COMPILE_PRESETS.shunn,
+    meta: { title: 'T', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  }
+  const md = await compileToMarkdown(paths.root, plainReq)
+  assert(md.includes('## Section') && md.includes('**world**'), 'Markdown export renders headings + bold')
+  const txt = await compileToText(paths.root, plainReq)
+  assert(
+    txt.includes('Section') && txt.includes('Hello world') && !txt.includes('**'),
+    'plain-text export strips markup'
   )
 
   // Citation generator: MLA / APA / Chicago formatting + sorting + service round-trip.

@@ -286,6 +286,10 @@ export interface FoolscapAPI {
     pdf(req: CompileRequest): Promise<{ pdfPath: string } | null>
     /** Build an .epub (save dialog). Returns path, or null if cancelled. */
     epub(req: CompileRequest): Promise<{ epubPath: string } | null>
+    /** Export Markdown (save dialog). Returns path, or null if cancelled. */
+    markdown(req: CompileRequest): Promise<{ path: string } | null>
+    /** Export plain text (save dialog). Returns path, or null if cancelled. */
+    text(req: CompileRequest): Promise<{ path: string } | null>
   }
   importer: {
     /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document. */

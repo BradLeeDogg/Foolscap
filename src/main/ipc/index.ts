@@ -23,7 +23,13 @@ import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
 import * as factcheck from '../services/factcheck'
 import * as transcripts from '../services/transcripts'
-import { compileToDocxFile, compileToEpubFile, compileToPdfFile } from '../services/compile'
+import {
+  compileToDocxFile,
+  compileToEpubFile,
+  compileToMarkdown,
+  compileToPdfFile,
+  compileToText
+} from '../services/compile'
 import { importFromFile, parseScrivener, type ScrivNode } from '../services/importer'
 import { basename } from 'path'
 import { writeFileAtomic } from '../services/atomic'
@@ -466,6 +472,30 @@ export function registerIpc(): void {
     if (res.canceled || !res.filePath) return null
     await compileToEpubFile(paths.root, req, res.filePath)
     return { epubPath: res.filePath }
+  })
+
+  ipcMain.handle('compile:markdown', async (_e, req: CompileRequest) => {
+    const { paths } = projectService.requireCurrent()
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export as Markdown',
+      defaultPath: join(app.getPath('documents'), `${req.meta.title || 'Manuscript'}.md`),
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await fs.writeFile(res.filePath, await compileToMarkdown(paths.root, req), 'utf8')
+    return { path: res.filePath }
+  })
+
+  ipcMain.handle('compile:text', async (_e, req: CompileRequest) => {
+    const { paths } = projectService.requireCurrent()
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export as plain text',
+      defaultPath: join(app.getPath('documents'), `${req.meta.title || 'Manuscript'}.txt`),
+      filters: [{ name: 'Plain text', extensions: ['txt'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await fs.writeFile(res.filePath, await compileToText(paths.root, req), 'utf8')
+    return { path: res.filePath }
   })
 
   // --- import ---------------------------------------------------------------

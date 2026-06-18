@@ -421,6 +421,102 @@ export async function compileToPdfFile(
   await writeFileAtomic(outPath, buffer)
 }
 
+// --- Markdown / plain text ---------------------------------------------------
+
+function inlinePlain(nodes: ProseMirrorNode[] | undefined, notes: string[], md: boolean): string {
+  let out = ''
+  for (const n of nodes ?? []) {
+    if (n.type === 'text' && typeof n.text === 'string') {
+      const marks = (n.marks ?? []).map((m) => m.type)
+      if (marks.includes('deletion')) continue
+      let t = n.text
+      if (md) {
+        if (marks.includes('bold')) t = `**${t}**`
+        if (marks.includes('italic')) t = `*${t}*`
+        if (marks.includes('underline')) t = `<u>${t}</u>`
+      }
+      out += t
+    } else if (n.type === 'footnote') {
+      notes.push(String((n.attrs?.content as string) ?? ''))
+      out += md ? `[^${notes.length}]` : `[${notes.length}]`
+    } else if (n.type === 'hardBreak') {
+      out += md ? '  \n' : '\n'
+    }
+  }
+  return out
+}
+
+function blockPlain(content: ProseMirrorNode[] | undefined, notes: string[], md: boolean): string {
+  let out = ''
+  for (const node of content ?? []) {
+    switch (node.type) {
+      case 'paragraph':
+        out += inlinePlain(node.content, notes, md) + '\n\n'
+        break
+      case 'heading': {
+        const lvl = Number(node.attrs?.level) || 2
+        const txt = inlinePlain(node.content, notes, md)
+        out += (md ? `${'#'.repeat(lvl)} ${txt}` : txt) + '\n\n'
+        break
+      }
+      case 'blockquote':
+        for (const child of node.content ?? []) {
+          out += (md ? '> ' : '    ') + inlinePlain(child.content, notes, md) + '\n'
+        }
+        out += '\n'
+        break
+      case 'bulletList':
+      case 'orderedList': {
+        let i = 1
+        for (const li of node.content ?? []) {
+          const para = (li.content ?? [])[0]
+          const prefix = node.type === 'orderedList' ? `${i++}. ` : '- '
+          out += prefix + inlinePlain(para?.content, notes, md) + '\n'
+        }
+        out += '\n'
+        break
+      }
+      default:
+        break
+    }
+  }
+  return out
+}
+
+async function assemblePlain(root: string, req: CompileRequest, md: boolean): Promise<string> {
+  const { preset, meta } = req
+  const notes: string[] = []
+  let out = ''
+  if (meta.title) out += (md ? `# ${meta.title}` : meta.title) + '\n\n'
+  if (meta.author) out += (md ? `*by ${meta.author}*` : `by ${meta.author}`) + '\n\n'
+  let prevDoc = false
+  for (const e of req.entries) {
+    if (e.heading) {
+      out += (md ? `# ${e.heading}` : e.heading.toUpperCase()) + '\n\n'
+      prevDoc = false
+    } else if (e.docId) {
+      if (prevDoc && preset.sceneBreak) out += `${preset.sceneBreak}\n\n`
+      const c = await readDocument(root, e.docId)
+      out += blockPlain(c?.doc?.content, notes, md)
+      prevDoc = true
+    }
+  }
+  if (notes.length) {
+    out += md ? '\n' : '\nNotes\n'
+    notes.forEach((n, i) => {
+      out += (md ? `[^${i + 1}]: ${n}` : `[${i + 1}] ${n}`) + '\n'
+    })
+  }
+  return out.trimEnd() + '\n'
+}
+
+export function compileToMarkdown(root: string, req: CompileRequest): Promise<string> {
+  return assemblePlain(root, req, true)
+}
+export function compileToText(root: string, req: CompileRequest): Promise<string> {
+  return assemblePlain(root, req, false)
+}
+
 // --- ePub (hand-rolled EPUB 3 via archiver) ---------------------------------
 
 interface EpubChapter {

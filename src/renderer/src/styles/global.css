@@ -15,8 +15,28 @@
   --danger: #a3433a;
   --selected: #e6e1d4;
   --hover: #eceae1;
+  --page: #fff;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 6px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark theme — same calm palette, inverted. Applied via [data-theme="dark"]. */
+:root[data-theme='dark'] {
+  --paper: #1c1a16;
+  --canvas: #141210;
+  --card: #24221c;
+  --page: #201e19;
+  --ink: #ece7da;
+  --ink-soft: #b4ae9f;
+  --ink-faint: #837d70;
+  --rule: #36322a;
+  --rule-strong: #4a463b;
+  --accent: #8aa0a8;
+  --accent-soft: #2b3338;
+  --danger: #d98a80;
+  --selected: #343029;
+  --hover: #2a2720;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -401,7 +421,7 @@ fieldset.field {
   width: var(--ms-page-width, 8.5in);
   max-width: calc(100% - 1.5rem);
   margin: 1.75rem auto;
-  background: #fff;
+  background: var(--page);
   padding: var(--ms-margin, 1in);
   box-shadow: var(--shadow);
   box-sizing: border-box;

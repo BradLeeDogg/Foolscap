@@ -105,6 +105,19 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
     }
   }
 
+  const exportPlain = async (kind: 'markdown' | 'text'): Promise<void> => {
+    setBusy(true)
+    setStatus(`Exporting ${kind === 'markdown' ? 'Markdown' : 'plain text'}…`)
+    try {
+      const res = await window.api.compile[kind](request())
+      setStatus(res ? `Exported ${res.path}` : null)
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal compile" onClick={(e) => e.stopPropagation()}>
@@ -255,6 +268,12 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
           {status && <span className="compile-status muted">{status}</span>}
           <span className="spacer" />
           <button onClick={onClose}>Close</button>
+          <button disabled={busy || docCount === 0} onClick={() => exportPlain('text')}>
+            Plain text
+          </button>
+          <button disabled={busy || docCount === 0} onClick={() => exportPlain('markdown')}>
+            Markdown
+          </button>
           <button disabled={busy || docCount === 0} onClick={exportEpub}>
             Export ePub
           </button>
