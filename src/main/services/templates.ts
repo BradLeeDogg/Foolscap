@@ -480,39 +480,151 @@ function collegeEssayTemplate(): TemplateNode[] {
       type: 'folder',
       title: 'Essay',
       isSpecial: true,
-      synopsis: 'The essay itself. Compile pulls from here, in order.',
+      synopsis: 'The essay itself (MLA). Compile pulls from here, in order.',
       children: [
-        { type: 'document', title: 'Introduction', synopsis: 'Hook, context, and thesis statement.' },
-        { type: 'document', title: 'Body Paragraph 1', synopsis: 'First point with evidence.' },
-        { type: 'document', title: 'Body Paragraph 2', synopsis: 'Second point with evidence.' },
-        { type: 'document', title: 'Body Paragraph 3', synopsis: 'Third point with evidence.' },
-        { type: 'document', title: 'Conclusion', synopsis: 'Restate the thesis and synthesize.' }
+        {
+          type: 'document',
+          title: 'Introduction',
+          synopsis: 'MLA header, title, hook, and thesis. Type over the examples.',
+          body: [
+            'Jane Doe',
+            'Professor Rivera',
+            'English 101',
+            '12 May 2026',
+            'A Concise, Descriptive Title',
+            'Open with a hook, give the context your reader needs, and end the introduction with a clear thesis that states your claim and previews your reasoning. Integrate evidence smoothly: “a quoted phrase that earns its place” (Author 12).',
+            'Type over this text with your own. MLA pages are double-spaced, 12-pt Times New Roman, 1-inch margins, with your last name and page number in the top-right header — applied automatically in Compile → MLA.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Body Paragraph 1',
+          synopsis: 'Topic sentence, evidence, analysis.',
+          body: [
+            'Open each body paragraph with a topic sentence that advances your thesis.',
+            'Introduce evidence in context, quote or paraphrase it, and cite the source: “the quoted material” (Author 23). Then analyze how it supports your point — never let a quotation stand alone.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Body Paragraph 2',
+          synopsis: 'Second point with evidence.',
+          body: ['Develop your second point here, with its own evidence and analysis (Author 31).']
+        },
+        {
+          type: 'document',
+          title: 'Body Paragraph 3',
+          synopsis: 'Third point with evidence.',
+          body: ['Develop your third point and build toward the conclusion (Author 45).']
+        },
+        {
+          type: 'document',
+          title: 'Conclusion',
+          synopsis: 'Restate the thesis and synthesize.',
+          body: [
+            'Restate your thesis in fresh words, synthesize your main points, and close with why the argument matters. Don’t introduce new evidence here.'
+          ]
+        }
       ]
     },
-    { type: 'document', title: 'Works Cited', synopsis: 'Citations (style applied at compile).' },
+    {
+      type: 'document',
+      title: 'Works Cited',
+      synopsis: 'MLA entries — alphabetical, hanging indent (applied at compile).',
+      body: [
+        'Works Cited',
+        'Last, First. Title of Book. Publisher, Year.',
+        'Last, First. “Title of an Article.” Title of Journal, vol. #, no. #, Year, pp. ##–##.',
+        'Last, First. “Title of a Web Page.” Title of Website, Day Month Year, URL.'
+      ]
+    },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
   ]
 }
 
 function academicPaperTemplate(): TemplateNode[] {
   return [
-    sheet('Paper Info', ['Title:', 'Author:', 'Course:', 'Instructor:', 'Date:']),
+    {
+      type: 'document',
+      title: 'Title Page',
+      synopsis: 'APA title page. Type over the examples.',
+      body: [
+        'The Title of Your Paper: A Specific, Focused Subtitle',
+        'Jane Doe',
+        'Department of Psychology, State University',
+        'PSY 200: Research Methods',
+        'Professor Rivera',
+        '12 May 2026',
+        'Type over this text with your own. APA papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with a page number in the top-right header — applied automatically in Compile → APA.'
+      ]
+    },
     {
       type: 'folder',
       title: 'Paper',
       isSpecial: true,
-      synopsis: 'The paper itself. Compile pulls from here, in order.',
+      synopsis: 'The paper itself (APA). Compile pulls from here, in order.',
       children: [
-        { type: 'document', title: 'Abstract', synopsis: 'Concise summary (if required).' },
-        { type: 'document', title: 'Introduction', synopsis: 'Topic, significance, research question.' },
-        { type: 'document', title: 'Literature Review', synopsis: 'What prior work established.' },
-        { type: 'document', title: 'Methods', synopsis: 'How the work was done.' },
-        { type: 'document', title: 'Results', synopsis: 'What was found.' },
-        { type: 'document', title: 'Discussion', synopsis: 'Interpretation and implications.' },
-        { type: 'document', title: 'Conclusion', synopsis: 'Summary and future directions.' }
+        {
+          type: 'document',
+          title: 'Abstract',
+          synopsis: 'Concise summary (≤ 250 words) plus keywords.',
+          body: [
+            'Abstract',
+            'In a single paragraph of no more than 250 words, summarize your research question, methods, key results, and conclusion. The abstract is not indented.',
+            'Keywords: first, second, third'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Introduction',
+          synopsis: 'Topic, significance, research question.',
+          body: [
+            'Open by establishing the topic and why it matters, narrow to the gap in existing research, and end with your research question or hypothesis. Cite sources in author–date form: (Author, 2020, p. 5), or as Author (2020) noted, evidence followed.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Literature Review',
+          synopsis: 'What prior work established.',
+          body: [
+            'Synthesize the relevant prior work — group studies by theme rather than summarizing them one by one — and show how they lead to your question (Author & Author, 2019).'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Method',
+          synopsis: 'Participants, materials, procedure.',
+          body: [
+            'Describe participants, materials, and procedure in enough detail that another researcher could replicate the study. Use past tense.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Results',
+          synopsis: 'What was found.',
+          body: ['Report your findings plainly, with the relevant statistics, before interpreting them.']
+        },
+        {
+          type: 'document',
+          title: 'Discussion',
+          synopsis: 'Interpretation and implications.',
+          body: [
+            'Interpret the results in light of your question, acknowledge limitations, and note implications and directions for future work.'
+          ]
+        }
       ]
     },
-    { type: 'document', title: 'References', synopsis: 'Citations (style applied at compile).' },
+    {
+      type: 'document',
+      title: 'References',
+      synopsis: 'APA entries — alphabetical, hanging indent (applied at compile).',
+      body: [
+        'References',
+        'Author, A. A. (Year). Title of the work: Capitalize only the first word and proper nouns. Publisher.',
+        'Author, A. A., & Author, B. B. (Year). Title of the article. Journal Name, Volume(Issue), pages. https://doi.org/xxxxx',
+        'Author, A. A. (Year, Month Day). Title of the web page. Site Name. https://www.example.com'
+      ]
+    },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
   ]
 }
@@ -523,9 +635,32 @@ function thesisTemplate(): TemplateNode[] {
       type: 'folder',
       title: 'Front Matter',
       children: [
-        { type: 'document', title: 'Title Page', synopsis: 'Title, author, institution, date.' },
-        { type: 'document', title: 'Abstract', synopsis: 'One-paragraph summary.' },
-        { type: 'document', title: 'Acknowledgments' },
+        {
+          type: 'document',
+          title: 'Title Page',
+          synopsis: 'Chicago title page. Type over the examples.',
+          body: [
+            'THE TITLE OF YOUR THESIS: A SPECIFIC, FOCUSED SUBTITLE',
+            'A Thesis Submitted in Partial Fulfillment of the Requirements for the Degree of',
+            'Master of Arts',
+            'by',
+            'Jane Doe',
+            'State University',
+            'May 2026',
+            'Type over this text with your own. Chicago papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with page numbers — applied automatically in Compile → Chicago.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Abstract',
+          synopsis: 'One-paragraph summary.',
+          body: ['Summarize the problem, approach, findings, and contribution in a single paragraph.']
+        },
+        {
+          type: 'document',
+          title: 'Acknowledgments',
+          body: ['Thank those who supported the work — advisors, funders, family.']
+        },
         { type: 'document', title: 'Table of Contents', synopsis: 'Generated at compile.' }
       ]
     },
@@ -533,17 +668,61 @@ function thesisTemplate(): TemplateNode[] {
       type: 'folder',
       title: 'Chapters',
       isSpecial: true,
-      synopsis: 'The thesis body. Compile pulls from here, in order.',
+      synopsis: 'The thesis body (Chicago). Compile pulls from here, in order.',
       children: [
-        { type: 'document', title: 'Chapter 1 — Introduction', synopsis: 'Problem, aims, significance.' },
-        { type: 'document', title: 'Chapter 2 — Literature Review', synopsis: 'Prior work and framing.' },
-        { type: 'document', title: 'Chapter 3 — Methodology', synopsis: 'Design, data, procedure.' },
-        { type: 'document', title: 'Chapter 4 — Results', synopsis: 'Findings.' },
-        { type: 'document', title: 'Chapter 5 — Discussion', synopsis: 'Interpretation and limitations.' },
-        { type: 'document', title: 'Chapter 6 — Conclusion', synopsis: 'Contributions and future work.' }
+        {
+          type: 'document',
+          title: 'Chapter 1 — Introduction',
+          synopsis: 'Problem, aims, significance.',
+          body: [
+            'Chapter 1: Introduction',
+            'Introduce the problem, state your aims, and explain why the work matters. Chicago’s notes–bibliography style cites sources with numbered footnotes.¹ Type over this paragraph with your own.',
+            '¹ First Last, Title of Book (Place of Publication: Publisher, Year), 12.'
+          ]
+        },
+        {
+          type: 'document',
+          title: 'Chapter 2 — Literature Review',
+          synopsis: 'Prior work and framing.',
+          body: ['Survey and frame the prior work your thesis builds on.']
+        },
+        {
+          type: 'document',
+          title: 'Chapter 3 — Methodology',
+          synopsis: 'Design, data, procedure.',
+          body: ['Describe your design, data, and procedure in replicable detail.']
+        },
+        {
+          type: 'document',
+          title: 'Chapter 4 — Results',
+          synopsis: 'Findings.',
+          body: ['Present your findings before interpreting them.']
+        },
+        {
+          type: 'document',
+          title: 'Chapter 5 — Discussion',
+          synopsis: 'Interpretation and limitations.',
+          body: ['Interpret the findings, weigh limitations, and connect back to your aims.']
+        },
+        {
+          type: 'document',
+          title: 'Chapter 6 — Conclusion',
+          synopsis: 'Contributions and future work.',
+          body: ['State your contributions and point to future work.']
+        }
       ]
     },
-    { type: 'document', title: 'Bibliography', synopsis: 'Citations (style applied at compile).' },
+    {
+      type: 'document',
+      title: 'Bibliography',
+      synopsis: 'Chicago entries — alphabetical, hanging indent (applied at compile).',
+      body: [
+        'Bibliography',
+        'Last, First. Title of Book. Place of Publication: Publisher, Year.',
+        'Last, First. “Title of an Article.” Title of Journal Volume, no. Issue (Year): pages.',
+        'Last, First. “Title of a Web Page.” Site Name. Month Day, Year. https://www.example.com.'
+      ]
+    },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
   ]
 }

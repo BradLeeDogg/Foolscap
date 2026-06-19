@@ -162,6 +162,42 @@ async function runChecks(): Promise<void> {
       defaultPresetFor('thesis') === 'chicago',
     'academic types default to MLA / APA / Chicago'
   )
+  // The academic types seed style-correct example content the writer types over:
+  // sample headers/title pages, body prose with in-text citations, and a
+  // citation-list page with model entries.
+  {
+    type TNode = { title: string; body?: string[]; children?: TNode[] }
+    const flatten = (nodes: TNode[]): TNode[] =>
+      nodes.flatMap((n) => [n, ...(n.children ? flatten(n.children) : [])])
+    const hasBodyDoc = (type: Parameters<typeof getTemplate>[0], title: string, needle: string) =>
+      flatten(getTemplate(type) as TNode[]).some(
+        (n) => n.title === title && !!n.body && n.body.some((p) => p.includes(needle))
+      )
+    assert(
+      hasBodyDoc('college-essay', 'Works Cited', 'Works Cited') &&
+        flatten(getTemplate('college-essay') as TNode[]).some(
+          (n) => n.title === 'Introduction' && !!n.body && n.body.some((p) => p.includes('(Author 12)'))
+        ),
+      'college-essay seeds an MLA header/citation example and a Works Cited page'
+    )
+    assert(
+      hasBodyDoc('academic-paper', 'References', 'References') &&
+        flatten(getTemplate('academic-paper') as TNode[]).some(
+          (n) => n.title === 'Title Page' && !!n.body && n.body.length > 0
+        ),
+      'academic-paper seeds an APA title page and a References page'
+    )
+    assert(
+      hasBodyDoc('thesis', 'Bibliography', 'Bibliography') &&
+        flatten(getTemplate('thesis') as TNode[]).some(
+          (n) =>
+            n.title === 'Chapter 1 — Introduction' &&
+            !!n.body &&
+            n.body.some((p) => p.startsWith('¹'))
+        ),
+      'thesis seeds a Chicago footnote example and a Bibliography page'
+    )
+  }
   assert(
     !!COMPILE_PRESETS['mla'] &&
       !!COMPILE_PRESETS['apa'] &&
