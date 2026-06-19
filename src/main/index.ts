@@ -55,6 +55,7 @@ function buildAppMenu(win: BrowserWindow): void {
         { label: 'Corkboard', accelerator: 'CmdOrCtrl+2', click: send('view-corkboard') },
         { label: 'Outliner', accelerator: 'CmdOrCtrl+3', click: send('view-outliner') },
         { type: 'separator' },
+        { label: 'Writing Analysis', click: send('panel-analysis') },
         { label: 'Split View', accelerator: 'CmdOrCtrl+\\', click: send('split-view') },
         { label: 'Composition Mode', accelerator: 'CmdOrCtrl+Shift+Return', click: send('compose') },
         { type: 'separator' },
@@ -194,6 +195,7 @@ app.whenReady().then(() => {
               await step(() => S.getState().setFolderView('scrivenings'), 450);
               const doc = S.getState().tree.find((t) => t.type === 'document');
               if (doc) S.getState().setSplit(doc.id);
+              await step(() => window.dispatchEvent(new CustomEvent('wp:cmd', { detail: 'panel-analysis' })), 300);
               await step(() => window.dispatchEvent(new CustomEvent('wp:cmd', { detail: 'help' })), 300);
               await step(() => window.dispatchEvent(new CustomEvent('wp:cmd', { detail: 'command-palette' })), 350);
               await step(() => S.getState().viewSource('smoke-none'), 350);

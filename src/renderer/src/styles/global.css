@@ -845,6 +845,79 @@ fieldset.field {
   white-space: nowrap;
 }
 
+/* writing analysis panel */
+.an-body {
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+}
+.an-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.an-stat {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.an-num {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.an-label {
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+}
+.an-h {
+  margin: 10px 0 4px;
+  font-size: 0.82rem;
+}
+.an-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.an-issues li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 0.84rem;
+  border-bottom: 1px solid var(--rule);
+}
+.an-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.an-crutch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.an-chip {
+  font-size: 0.78rem;
+  background: var(--hover);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 2px 9px;
+}
+.an-chip em {
+  color: var(--ink-faint);
+  font-style: normal;
+}
+.an-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.an-note {
+  font-size: 0.72rem;
+}
+
 /* help / onboarding */
 .help-dialog {
   width: 760px;

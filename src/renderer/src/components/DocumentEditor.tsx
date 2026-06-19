@@ -115,6 +115,7 @@ export default function DocumentEditor({
   const setInserter = useStore((s) => s.setInserter)
   const setFootnoteInserter = useStore((s) => s.setFootnoteInserter)
   const setFlushActive = useStore((s) => s.setFlushActive)
+  const setGetActiveText = useStore((s) => s.setGetActiveText)
   const docReloadToken = useStore((s) => s.docReloadToken)
   const setProof = useStore((s) => s.setProof)
   const english = useStore((s) => s.meta?.settings.english)
@@ -210,7 +211,10 @@ export default function DocumentEditor({
         editor.chain().focus().insertFootnote(text).run()
         return true
       })
-      if (active) setFlushActive(() => save())
+      if (active) {
+        setFlushActive(() => save())
+        setGetActiveText(() => (editor.isDestroyed ? '' : editor.getText({ blockSeparator: '\n' })))
+      }
     }
   })
 

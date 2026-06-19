@@ -27,6 +27,7 @@ const COMMANDS: Cmd[] = [
   { id: 'panel-factcheck', label: 'Fact-check' },
   { id: 'panel-transcripts', label: 'Transcripts' },
   { id: 'panel-proofread', label: 'Proofreader' },
+  { id: 'panel-analysis', label: 'Writing analysis' },
   { id: 'panel-targets', label: 'Targets & deadline' },
   { id: 'snapshot', label: 'Snapshots' },
   { id: 'backup-now', label: 'Back up now' },

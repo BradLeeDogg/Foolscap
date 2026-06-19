@@ -50,6 +50,9 @@ interface AppState {
   /** Bumped to make open editors reload from disk (after a project-wide replace). */
   docReloadToken: number
   bumpDocReload: () => void
+  /** Read the active editor's plain text (for Writing Analysis). */
+  getActiveText: (() => string) | null
+  setGetActiveText: (fn: (() => string) | null) => void
   /** Proofreading issues for the active document + fix/jump bridges to its editor. */
   proofIssues: DocIssue[]
   proofApply: ((from: number, to: number, replacement: string) => void) | null
@@ -105,6 +108,7 @@ export const useStore = create<AppState>((set) => ({
   viewSourceId: null,
   flushActive: null,
   docReloadToken: 0,
+  getActiveText: null,
   proofIssues: [],
   proofApply: null,
   proofFocus: null,
@@ -154,6 +158,7 @@ export const useStore = create<AppState>((set) => ({
   closeViewSource: () => set({ viewSourceId: null }),
   setFlushActive: (fn) => set({ flushActive: fn }),
   bumpDocReload: () => set((s) => ({ docReloadToken: s.docReloadToken + 1 })),
+  setGetActiveText: (fn) => set({ getActiveText: fn }),
   setProof: (issues, apply, focus) =>
     set({ proofIssues: issues, proofApply: apply, proofFocus: focus }),
   setSplit: (id) => set({ splitId: id }),

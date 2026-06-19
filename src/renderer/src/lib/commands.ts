@@ -24,6 +24,7 @@ export type AppCommand =
   | 'panel-factcheck'
   | 'panel-transcripts'
   | 'panel-proofread'
+  | 'panel-analysis'
   | 'panel-targets'
   | 'panel-inspector'
   | 'open-settings'

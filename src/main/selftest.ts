@@ -27,6 +27,7 @@ import { proofread, type Issue } from '@shared/proofreader'
 import { AME_TO_BRE, BRE_TO_AME } from '@shared/dialect'
 import { findRanges } from '@shared/find'
 import { countInDoc, replaceInDoc } from '@shared/replace'
+import { analyze } from '@shared/analysis'
 import { mergeDocs, docLines } from '@shared/docops'
 import { diffLines } from '@shared/diff'
 import { classifySourceFile } from '@shared/sourcefile'
@@ -574,6 +575,18 @@ async function runChecks(): Promise<void> {
   )
   assert(findRanges('aaaa', 'aa', false).length === 2, 'findRanges is non-overlapping')
   assert(findRanges('abc', '', false).length === 0, 'findRanges ignores empty query')
+
+  // Writing analysis (local, deterministic).
+  {
+    const a = analyze('The cat sat. The cat ran very quickly. It was eaten by the dog.')
+    assert(a.words === 14 && a.sentences === 3, 'analyze counts words and sentences')
+    assert(a.fillers >= 1, 'analyze flags filler words (very)')
+    assert(a.adverbs >= 1, 'analyze flags -ly adverbs (quickly)')
+    assert(a.passive >= 1, 'analyze flags passive voice (was eaten)')
+    assert(a.gradeLevel >= 0, 'analyze produces a grade level')
+    const crutch = analyze('apple apple apple apple orange').crutch
+    assert(crutch.some((c) => c.word === 'apple' && c.count === 4), 'analyze surfaces crutch words')
+  }
 
   // Project-wide replace: pure transform + service (snapshots first).
   {

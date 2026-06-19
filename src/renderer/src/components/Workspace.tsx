@@ -14,6 +14,7 @@ import SourcesPanel from './SourcesPanel'
 import FactCheckPanel from './FactCheckPanel'
 import TranscriptsPanel from './TranscriptsPanel'
 import ProofreaderPanel from './ProofreaderPanel'
+import AnalysisPanel from './AnalysisPanel'
 import ResearchViewer from './ResearchViewer'
 import CompileDialog from './CompileDialog'
 import SettingsDialog from './SettingsDialog'
@@ -62,6 +63,7 @@ export default function Workspace(): JSX.Element {
   const [showFactCheck, setShowFactCheck] = useState(() => !!meta?.settings.factCheckEnabled)
   const [showTranscripts, setShowTranscripts] = useState(false)
   const [showProof, setShowProof] = useState(false)
+  const [showAnalysis, setShowAnalysis] = useState(false)
   const [showCompile, setShowCompile] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showQuickOpen, setShowQuickOpen] = useState(false)
@@ -126,6 +128,9 @@ export default function Workspace(): JSX.Element {
         break
       case 'panel-proofread':
         setShowProof((v) => !v)
+        break
+      case 'panel-analysis':
+        setShowAnalysis((v) => !v)
         break
       case 'panel-targets':
         setShowTargets((v) => !v)
@@ -336,6 +341,14 @@ export default function Workspace(): JSX.Element {
               <PanelResizeHandle className="resize-handle" />
               <Panel id="proofread" order={11} defaultSize={26} minSize={18} maxSize={42} className="pane">
                 <ProofreaderPanel onClose={() => setShowProof(false)} />
+              </Panel>
+            </>
+          )}
+          {showAnalysis && (
+            <>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel id="analysis" order={13} defaultSize={24} minSize={18} maxSize={40} className="pane">
+                <AnalysisPanel onClose={() => setShowAnalysis(false)} />
               </Panel>
             </>
           )}
