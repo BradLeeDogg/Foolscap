@@ -121,11 +121,52 @@ function snapshotHtml(r: ReadableResult, url: string, capturedAt: number): strin
   )
 }
 
+// Look like a real browser. Many sites return 403 to unfamiliar user agents or
+// to requests missing the headers a browser normally sends.
+const BROWSER_HEADERS: Record<string, string> = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9'
+}
+
+/** Add a scheme if the user typed a bare host ("example.com" → "https://…"). */
+function normalizeUrl(raw: string): string {
+  const t = raw.trim()
+  return /^[a-z]+:\/\//i.test(t) ? t : `https://${t}`
+}
+
+/** Fetch a page with browser-like headers, a timeout, and friendly errors. */
+async function fetchPage(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20000)
+  let res: Awaited<ReturnType<typeof fetch>>
+  try {
+    res = await fetch(url, { headers: BROWSER_HEADERS, redirect: 'follow', signal: controller.signal })
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError')
+      throw new Error('Couldn’t reach the page — the request timed out.')
+    throw new Error(
+      `Couldn’t reach the page — ${e instanceof Error ? e.message : 'network error'}.`
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!res.ok) {
+    const blocked = res.status === 403 || res.status === 401 || res.status === 429
+    throw new Error(
+      `The site returned HTTP ${res.status} ${res.statusText}.` +
+        (blocked ? ' It’s blocking automated capture — add it as a reference instead.' : '')
+    )
+  }
+  return res.text()
+}
+
 /** Fetch a URL, clean it, store a readable snapshot, and record the source. */
-export async function captureUrl(db: DB, root: string, url: string): Promise<Source> {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Foolscap research capture)' } })
-  if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
-  const html = await res.text()
+export async function captureUrl(db: DB, root: string, rawUrl: string): Promise<Source> {
+  const url = normalizeUrl(rawUrl)
+  const html = await fetchPage(url)
   const readable = extractReadable(html, url)
 
   const id = randomUUID()

@@ -588,6 +588,27 @@ async function runChecks(): Promise<void> {
     assert(made.author === '' && made.container === '', 'createSource defaults citation fields to empty')
     const upd = updateSource(cdb, made.id, { author: 'Doe, John', year: '1999' })
     assert(upd?.author === 'Doe, John' && upd?.year === '1999', 'updateSource persists citation metadata')
+    // Manual book entry: full bibliographic fields persist and format correctly.
+    const book = createSource(cdb, {
+      kind: 'book',
+      title: 'On Writing Well',
+      author: 'Zinsser, William',
+      publisher: 'Harper',
+      year: '2006'
+    })
+    assert(
+      book.kind === 'book' && book.publisher === 'Harper' && book.year === '2006',
+      'createSource stores a book with author/publisher/year'
+    )
+    assert(
+      listSources(cdb).some((s) => s.id === book.id && s.kind === 'book'),
+      'a manually-added book appears in the source list'
+    )
+    const bookCite = formatCitation(book, 'mla')
+    assert(
+      bookCite.html.includes('<em>On Writing Well</em>') && bookCite.text.includes('Harper, 2006.'),
+      'a manual book formats as an MLA book entry (italic title, publisher, year)'
+    )
   }
 
   // Proofreader: dialect, Oxford comma, repeats, spacing.

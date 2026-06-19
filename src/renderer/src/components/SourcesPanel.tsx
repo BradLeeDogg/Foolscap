@@ -14,7 +14,6 @@ interface Props {
   onClose: () => void
 }
 
-const MANUAL_KINDS: SourceKind[] = ['url', 'transcript', 'note']
 type EditField = 'author' | 'title' | 'container' | 'publisher' | 'year' | 'locator' | 'url'
 const EDIT_FIELDS: Array<[EditField, string]> = [
   ['author', 'Author(s)'],
@@ -26,6 +25,42 @@ const EDIT_FIELDS: Array<[EditField, string]> = [
   ['url', 'URL']
 ]
 
+// Manual entry: each source type shows just the fields that matter for it.
+type ManualField = 'author' | 'title' | 'container' | 'publisher' | 'year' | 'locator' | 'url' | 'notes'
+const FIELD_LABEL: Record<ManualField, string> = {
+  author: 'Author(s)',
+  title: 'Title',
+  container: 'Journal / container',
+  publisher: 'Publisher',
+  year: 'Year / date',
+  locator: 'Pages / locator',
+  url: 'URL',
+  notes: 'Note'
+}
+interface ManualType {
+  kind: SourceKind
+  label: string
+  fields: ManualField[]
+}
+const MANUAL_TYPES: ManualType[] = [
+  { kind: 'book', label: 'Book', fields: ['author', 'title', 'publisher', 'year'] },
+  { kind: 'article', label: 'Journal / article', fields: ['author', 'title', 'container', 'year', 'locator'] },
+  { kind: 'url', label: 'Website', fields: ['author', 'title', 'url', 'year'] },
+  { kind: 'transcript', label: 'Interview / transcript', fields: ['author', 'title', 'locator'] },
+  { kind: 'note', label: 'Note', fields: ['title', 'notes'] }
+]
+const BLANK_FORM: Record<ManualField, string> = {
+  author: '', title: '', container: '', publisher: '', year: '', locator: '', url: '', notes: ''
+}
+
+function hostnameOf(raw: string): string {
+  try {
+    return new URL(/^[a-z]+:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
 /** The project's research library + a citation/bibliography generator. */
 export default function SourcesPanel({ onClose }: Props): JSX.Element {
   const meta = useStore((s) => s.meta)
@@ -36,9 +71,8 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
-  const [kind, setKind] = useState<SourceKind>('url')
-  const [title, setTitle] = useState('')
-  const [ref, setRef] = useState('')
+  const [mkind, setMkind] = useState<SourceKind>('book')
+  const [form, setForm] = useState<Record<ManualField, string>>({ ...BLANK_FORM })
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const initialStyle = (): CitationStyle => {
@@ -68,6 +102,9 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
       refresh()
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Capture failed')
+      // Pre-fill the reference form so a blocked page can still be cited.
+      setMkind('url')
+      setForm((f) => ({ ...f, url: url.trim(), title: f.title || hostnameOf(url) }))
     } finally {
       setBusy(false)
     }
@@ -81,16 +118,28 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
     }
   }
 
+  const activeType = MANUAL_TYPES.find((t) => t.kind === mkind) ?? MANUAL_TYPES[0]!
+  const setField = (f: ManualField, v: string): void => setForm((prev) => ({ ...prev, [f]: v }))
   const addManual = async (): Promise<void> => {
-    if (!title.trim()) return
+    if (!form.title.trim()) {
+      flash('Give the reference a title first.')
+      return
+    }
+    const val = (f: ManualField): string | undefined =>
+      activeType.fields.includes(f) && form[f].trim() ? form[f].trim() : undefined
     await window.api.source.createManual({
-      kind,
-      title: title.trim(),
-      url: kind === 'url' ? ref.trim() || null : null,
-      locator: kind === 'transcript' ? ref.trim() || null : null
+      kind: mkind,
+      title: form.title.trim(),
+      author: val('author'),
+      container: val('container'),
+      publisher: val('publisher'),
+      year: val('year'),
+      locator: val('locator') ?? null,
+      url: val('url') ?? null,
+      notes: val('notes')
     })
-    setTitle('')
-    setRef('')
+    setForm({ ...BLANK_FORM })
+    flash('Added to your sources.')
     refresh()
   }
 
@@ -154,23 +203,27 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
       <div className="src-section">
         <label className="insp-label">Add reference</label>
         <div className="src-manual">
-          <select value={kind} onChange={(e) => setKind(e.target.value as SourceKind)}>
-            {MANUAL_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {k}
+          <select value={mkind} onChange={(e) => setMkind(e.target.value as SourceKind)}>
+            {MANUAL_TYPES.map((t) => (
+              <option key={t.kind} value={t.kind}>
+                {t.label}
               </option>
             ))}
           </select>
-          <input value={title} placeholder="Title" onChange={(e) => setTitle(e.target.value)} />
-          {kind !== 'note' && (
+          {activeType.fields.map((f) => (
             <input
-              value={ref}
-              placeholder={kind === 'url' ? 'URL' : 'Timestamp / locator'}
-              onChange={(e) => setRef(e.target.value)}
+              key={f}
+              value={form[f]}
+              placeholder={f === 'locator' && mkind === 'transcript' ? 'Timestamp' : FIELD_LABEL[f]}
+              onChange={(e) => setField(f, e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addManual()}
             />
-          )}
-          <button onClick={addManual}>Add</button>
+          ))}
+          <button className="primary" onClick={addManual}>
+            Add
+          </button>
         </div>
+        <p className="src-msg muted">Fill what you know — leave the rest blank.</p>
       </div>
 
       <ul className="src-list">

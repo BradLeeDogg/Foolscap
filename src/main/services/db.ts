@@ -101,7 +101,7 @@ function migrate(db: DB): void {
     db.exec(`
       CREATE TABLE sources (
         id         TEXT PRIMARY KEY,
-        kind       TEXT NOT NULL,           -- 'web' | 'pdf' | 'image' | 'transcript' | 'note' | 'url'
+        kind       TEXT NOT NULL,           -- web | pdf | image | transcript | note | url | book | article
         title      TEXT NOT NULL,
         url        TEXT,
         locator    TEXT,                     -- transcript timestamp, page no., etc.

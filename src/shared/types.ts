@@ -143,7 +143,15 @@ export interface Collection {
   createdAt: number
 }
 
-export type SourceKind = 'web' | 'pdf' | 'image' | 'transcript' | 'note' | 'url'
+export type SourceKind =
+  | 'web'
+  | 'pdf'
+  | 'image'
+  | 'transcript'
+  | 'note'
+  | 'url'
+  | 'book'
+  | 'article'
 
 /** A stored, citeable source: a captured page, a file asset, a transcript, etc. */
 export interface Source {
