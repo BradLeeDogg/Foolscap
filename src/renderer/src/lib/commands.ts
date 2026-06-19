@@ -11,6 +11,7 @@ export type AppCommand =
   | 'split-view'
   | 'split-doc'
   | 'merge-docs'
+  | 'insert-image'
   | 'compose'
   | 'compile'
   | 'snapshot'

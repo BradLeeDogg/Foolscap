@@ -29,6 +29,7 @@ import { findRanges } from '@shared/find'
 import { mergeDocs, docLines } from '@shared/docops'
 import { diffLines } from '@shared/diff'
 import { classifySourceFile } from '@shared/sourcefile'
+import { imageSize, fitWidth } from '@shared/imagesize'
 import { trashItem, restoreItem, listTrash, mergeWithPrevious } from './services/binder'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
@@ -578,6 +579,50 @@ async function runChecks(): Promise<void> {
   assert(classifySourceFile('assets/x.PNG') === 'image', 'classify image (case-insensitive)')
   assert(classifySourceFile('assets/x.pdf') === 'pdf', 'classify pdf')
   assert(classifySourceFile(null) === 'meta', 'classify metadata-only source')
+
+  // Inline images: dimension reading (for DOCX sizing).
+  {
+    const png = Buffer.alloc(24)
+    png[0] = 0x89
+    png[1] = 0x50
+    png.writeUInt32BE(120, 16)
+    png.writeUInt32BE(80, 20)
+    const d = imageSize(png)
+    assert(d.width === 120 && d.height === 80, 'imageSize reads PNG dimensions')
+    const f = fitWidth({ width: 1000, height: 500 }, 450)
+    assert(f.width === 450 && f.height === 225, 'fitWidth scales preserving aspect ratio')
+  }
+  // Inline image exports to HTML (with caption) and embeds into DOCX.
+  {
+    const png1x1 =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
+    await writeDocument(paths.root, 'img-export-test', {
+      version: DOCUMENT_CONTENT_VERSION,
+      doc: {
+        type: 'doc',
+        content: [
+          { type: 'image', attrs: { src: png1x1, alt: 'Figure 1' } },
+          { type: 'paragraph', content: [{ type: 'text', text: 'After image.' }] }
+        ]
+      }
+    })
+    const imgReq = {
+      entries: [{ docId: 'img-export-test' }],
+      preset: COMPILE_PRESETS.shunn,
+      meta: { title: 'I', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+      includeFactCheck: false
+    }
+    const imgHtml = await compileToHtml(paths.root, imgReq)
+    assert(
+      imgHtml.includes('<img src="data:image/png') && imgHtml.includes('Figure 1'),
+      'image exports to HTML with a caption'
+    )
+    const imgDocx = await compileToDocxBuffer(paths.root, imgReq)
+    assert(
+      imgDocx.length > 1000 && imgDocx[0] === 0x50 && imgDocx[1] === 0x4b,
+      'DOCX with an embedded image is a valid zip'
+    )
+  }
 
   // Merge documents (pure concat used by "merge with previous").
   {

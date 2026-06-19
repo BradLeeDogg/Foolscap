@@ -4,6 +4,7 @@ import {
   FootnoteReferenceRun,
   Header,
   HeadingLevel,
+  ImageRun,
   LineRuleType,
   PageBreak,
   PageNumber,
@@ -16,6 +17,7 @@ import archiver from 'archiver'
 import { randomUUID } from 'crypto'
 import type { CompilePreset, CompileRequest, ProseMirrorNode } from '@shared/types'
 import { SCREENPLAY_ELEMENTS, SCREENPLAY_STYLES, isScreenplayElement } from '@shared/screenplay'
+import { imageSize, fitWidth } from '@shared/imagesize'
 import { countWords, readDocument } from './documents'
 import { writeFileAtomic } from './atomic'
 
@@ -129,6 +131,38 @@ function blockParagraphs(
               children: [new TextRun(prefix), ...inlineRuns(para?.content, fns)],
               spacing: bodySpacing(preset),
               indent: { left: convertInchesToTwip(0.5) }
+            })
+          )
+        }
+        break
+      }
+      case 'image': {
+        const m = /^data:image\/([a-z+]+);base64,(.+)$/i.exec(String(node.attrs?.src ?? ''))
+        const fmt = m?.[1]?.toLowerCase()
+        const type =
+          fmt === 'jpeg' || fmt === 'jpg' ? 'jpg'
+          : fmt === 'gif' ? 'gif'
+          : fmt === 'bmp' ? 'bmp'
+          : fmt === 'png' ? 'png'
+          : null
+        const alt = String(node.attrs?.alt ?? '')
+        if (m && type) {
+          const data = Buffer.from(m[2]!, 'base64')
+          const dim = fitWidth(imageSize(data), 450)
+          out.push(
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new ImageRun({ type, data, transformation: dim })],
+              spacing: { ...bodySpacing(preset), before: 120, after: alt ? 0 : 120 }
+            })
+          )
+        }
+        if (alt) {
+          out.push(
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: alt, italics: true })],
+              spacing: { ...bodySpacing(preset), after: 120 }
             })
           )
         }
@@ -312,6 +346,16 @@ function blockHtml(content: ProseMirrorNode[] | undefined, notes: string[]): str
         html += `</${tag}>`
         break
       }
+      case 'image': {
+        const src = String(node.attrs?.src ?? '')
+        const alt = String(node.attrs?.alt ?? '')
+        if (src) {
+          html += `<figure class="fig"><img src="${esc(src)}" alt="${esc(alt)}"/>${
+            alt ? `<figcaption>${esc(alt)}</figcaption>` : ''
+          }</figure>`
+        }
+        break
+      }
       default:
         break
     }
@@ -388,6 +432,9 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
     .title-page .title { text-align: center; margin-top: 3in; }
     .byauthor { text-align: center; }
     sup.fn { font-size: 0.7em; }
+    figure.fig { margin: 1em 0; text-align: center; page-break-inside: avoid; }
+    figure.fig img { max-width: 100%; height: auto; }
+    figure.fig figcaption { font-size: 0.85em; color: #555; margin-top: 0.3em; text-indent: 0; }
     .endnotes { page-break-before: always; }
   `
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${body}</body></html>`
@@ -474,6 +521,12 @@ function blockPlain(content: ProseMirrorNode[] | undefined, notes: string[], md:
           out += prefix + inlinePlain(para?.content, notes, md) + '\n'
         }
         out += '\n'
+        break
+      }
+      case 'image': {
+        const alt = String(node.attrs?.alt ?? '')
+        // Don't dump the (huge) data URL into text/markdown; reference it instead.
+        out += (md ? `![${alt}](embedded image)` : `[image${alt ? `: ${alt}` : ''}]`) + '\n\n'
         break
       }
       default:

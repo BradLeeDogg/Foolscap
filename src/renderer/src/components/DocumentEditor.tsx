@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react'
+import { useEditor, EditorContent, BubbleMenu, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -15,6 +15,7 @@ import { Screenplay } from '../editor/screenplay'
 import { Deletion, Insertion, TrackChanges, hasTrackedChanges } from '../editor/trackchanges'
 import { Proofreader, getProofIssues } from '../editor/proofreader'
 import { FindReplace, getFindState } from '../editor/findreplace'
+import { Image } from '../editor/image'
 import { onCommand } from '../lib/commands'
 import { mergeDocs } from '@shared/docops'
 import type { ProofOptions } from '@shared/proofreader'
@@ -23,6 +24,24 @@ import { playKeyClick, playReturn } from '../lib/typewriter'
 import AnnotationsPanel from './AnnotationsPanel'
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
+
+function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result))
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(file)
+  })
+}
+/** Insert image files (paste/drop/picker) as block images at the cursor. */
+function insertImages(editor: Editor | null, files: File[]): void {
+  if (!editor) return
+  for (const f of files) {
+    void fileToDataURL(f).then((src) =>
+      editor.chain().focus().setImage({ src, alt: f.name.replace(/\.[^.]+$/, '') }).run()
+    )
+  }
+}
 
 function countWords(text: string): number {
   const t = text.trim()
@@ -88,6 +107,7 @@ export default function DocumentEditor({
   const [findInfo, setFindInfo] = useState({ count: 0, index: 0 })
   const [flash, setFlash] = useState<string | null>(null)
   const findInputRef = useRef<HTMLInputElement>(null)
+  const imgInputRef = useRef<HTMLInputElement>(null)
   const flashMsg = (m: string): void => {
     setFlash(m)
     setTimeout(() => setFlash(null), 2500)
@@ -115,6 +135,7 @@ export default function DocumentEditor({
       TrackChanges,
       Proofreader,
       FindReplace,
+      Image,
       Placeholder.configure({ placeholder: 'Begin writing…' })
     ],
     content: EMPTY_DOC,
@@ -129,6 +150,23 @@ export default function DocumentEditor({
           }
           return false
         }
+      },
+      handlePaste: (_view, event) => {
+        const files = Array.from((event as ClipboardEvent).clipboardData?.files ?? []).filter((f) =>
+          f.type.startsWith('image/')
+        )
+        if (!files.length) return false
+        insertImages(editor, files)
+        return true
+      },
+      handleDrop: (_view, event) => {
+        const files = Array.from((event as DragEvent).dataTransfer?.files ?? []).filter((f) =>
+          f.type.startsWith('image/')
+        )
+        if (!files.length) return false
+        event.preventDefault()
+        insertImages(editor, files)
+        return true
       }
     },
     onUpdate: ({ editor }) => {
@@ -417,6 +455,7 @@ export default function DocumentEditor({
       if (cmd === 'find') openFind()
       else if (cmd === 'split-doc') void splitDoc()
       else if (cmd === 'merge-docs') void mergeUp()
+      else if (cmd === 'insert-image') imgInputRef.current?.click()
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, editor, docId, findQuery, caseSensitive])
@@ -471,6 +510,17 @@ export default function DocumentEditor({
   return (
     <div className="editor-pane">
       {bubble}
+      <input
+        ref={imgInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          if (e.target.files) insertImages(editor, Array.from(e.target.files))
+          e.target.value = ''
+        }}
+      />
       {editor && !hideNotes && (
         <div className="format-toolbar">
           <button className={fmtActive('paragraph')} title="Body text" onClick={() => editor.chain().focus().setParagraph().run()}>
@@ -504,6 +554,9 @@ export default function DocumentEditor({
           </button>
           <button className={fmtActive('blockquote')} title="Block quote" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
             ❝
+          </button>
+          <button title="Insert image" onClick={() => imgInputRef.current?.click()}>
+            🖼
           </button>
           {flash && <span className="fmt-flash muted">{flash}</span>}
           <span className="fmt-spacer" />
