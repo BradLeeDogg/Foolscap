@@ -1,5 +1,6 @@
 import type { ProjectType } from '@shared/types'
 import { OVERLAY_LABELS, type StructureOverlay } from '@shared/api'
+import type { BodyLine } from './documents'
 
 /** A node in a starter-template tree. Documents may carry placeholder body text. */
 export interface TemplateNode {
@@ -7,8 +8,10 @@ export interface TemplateNode {
   title: string
   synopsis?: string
   isSpecial?: boolean
-  /** Placeholder paragraphs for documents (kept light — fully editable). */
-  body?: string[]
+  /** Placeholder paragraphs for documents (kept light — fully editable).
+   *  Strings are plain body paragraphs; BodyLine adds alignment / no-indent /
+   *  bold for seeded headers, titles, and section labels. */
+  body?: Array<string | BodyLine>
   children?: TemplateNode[]
 }
 
@@ -487,13 +490,13 @@ function collegeEssayTemplate(): TemplateNode[] {
           title: 'Introduction',
           synopsis: 'MLA header, title, hook, and thesis. Type over the examples.',
           body: [
-            'Jane Doe',
-            'Professor Rivera',
-            'English 101',
-            '12 May 2026',
-            'A Concise, Descriptive Title',
+            { text: 'Jane Doe', noIndent: true },
+            { text: 'Professor Rivera', noIndent: true },
+            { text: 'English 101', noIndent: true },
+            { text: '12 May 2026', noIndent: true },
+            { text: 'A Concise, Descriptive Title', align: 'center', noIndent: true },
             'Open with a hook, give the context your reader needs, and end the introduction with a clear thesis that states your claim and previews your reasoning. Integrate evidence smoothly: “a quoted phrase that earns its place” (Author 12).',
-            'Type over this text with your own. MLA pages are double-spaced, 12-pt Times New Roman, 1-inch margins, with your last name and page number in the top-right header — applied automatically in Compile → MLA.'
+            { text: 'Type over this text with your own. MLA pages are double-spaced, 12-pt Times New Roman, 1-inch margins, with your last name and page number in the top-right header — applied automatically in Compile → MLA.', noIndent: true }
           ]
         },
         {
@@ -532,10 +535,10 @@ function collegeEssayTemplate(): TemplateNode[] {
       title: 'Works Cited',
       synopsis: 'MLA entries — alphabetical, hanging indent (applied at compile).',
       body: [
-        'Works Cited',
-        'Last, First. Title of Book. Publisher, Year.',
-        'Last, First. “Title of an Article.” Title of Journal, vol. #, no. #, Year, pp. ##–##.',
-        'Last, First. “Title of a Web Page.” Title of Website, Day Month Year, URL.'
+        { text: 'Works Cited', align: 'center', noIndent: true },
+        { text: 'Last, First. Title of Book. Publisher, Year.', noIndent: true },
+        { text: 'Last, First. “Title of an Article.” Title of Journal, vol. #, no. #, Year, pp. ##–##.', noIndent: true },
+        { text: 'Last, First. “Title of a Web Page.” Title of Website, Day Month Year, URL.', noIndent: true }
       ]
     },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
@@ -549,13 +552,13 @@ function academicPaperTemplate(): TemplateNode[] {
       title: 'Title Page',
       synopsis: 'APA title page. Type over the examples.',
       body: [
-        'The Title of Your Paper: A Specific, Focused Subtitle',
-        'Jane Doe',
-        'Department of Psychology, State University',
-        'PSY 200: Research Methods',
-        'Professor Rivera',
-        '12 May 2026',
-        'Type over this text with your own. APA papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with a page number in the top-right header — applied automatically in Compile → APA.'
+        { text: 'The Title of Your Paper: A Specific, Focused Subtitle', align: 'center', noIndent: true, bold: true },
+        { text: 'Jane Doe', align: 'center', noIndent: true },
+        { text: 'Department of Psychology, State University', align: 'center', noIndent: true },
+        { text: 'PSY 200: Research Methods', align: 'center', noIndent: true },
+        { text: 'Professor Rivera', align: 'center', noIndent: true },
+        { text: '12 May 2026', align: 'center', noIndent: true },
+        { text: 'Type over this text with your own. APA papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with a page number in the top-right header — applied automatically in Compile → APA.', noIndent: true }
       ]
     },
     {
@@ -569,8 +572,8 @@ function academicPaperTemplate(): TemplateNode[] {
           title: 'Abstract',
           synopsis: 'Concise summary (≤ 250 words) plus keywords.',
           body: [
-            'Abstract',
-            'In a single paragraph of no more than 250 words, summarize your research question, methods, key results, and conclusion. The abstract is not indented.',
+            { text: 'Abstract', align: 'center', noIndent: true, bold: true },
+            { text: 'In a single paragraph of no more than 250 words, summarize your research question, methods, key results, and conclusion. The abstract is not indented.', noIndent: true },
             'Keywords: first, second, third'
           ]
         },
@@ -619,10 +622,10 @@ function academicPaperTemplate(): TemplateNode[] {
       title: 'References',
       synopsis: 'APA entries — alphabetical, hanging indent (applied at compile).',
       body: [
-        'References',
-        'Author, A. A. (Year). Title of the work: Capitalize only the first word and proper nouns. Publisher.',
-        'Author, A. A., & Author, B. B. (Year). Title of the article. Journal Name, Volume(Issue), pages. https://doi.org/xxxxx',
-        'Author, A. A. (Year, Month Day). Title of the web page. Site Name. https://www.example.com'
+        { text: 'References', align: 'center', noIndent: true, bold: true },
+        { text: 'Author, A. A. (Year). Title of the work: Capitalize only the first word and proper nouns. Publisher.', noIndent: true },
+        { text: 'Author, A. A., & Author, B. B. (Year). Title of the article. Journal Name, Volume(Issue), pages. https://doi.org/xxxxx', noIndent: true },
+        { text: 'Author, A. A. (Year, Month Day). Title of the web page. Site Name. https://www.example.com', noIndent: true }
       ]
     },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }
@@ -640,14 +643,14 @@ function thesisTemplate(): TemplateNode[] {
           title: 'Title Page',
           synopsis: 'Chicago title page. Type over the examples.',
           body: [
-            'THE TITLE OF YOUR THESIS: A SPECIFIC, FOCUSED SUBTITLE',
-            'A Thesis Submitted in Partial Fulfillment of the Requirements for the Degree of',
-            'Master of Arts',
-            'by',
-            'Jane Doe',
-            'State University',
-            'May 2026',
-            'Type over this text with your own. Chicago papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with page numbers — applied automatically in Compile → Chicago.'
+            { text: 'THE TITLE OF YOUR THESIS: A SPECIFIC, FOCUSED SUBTITLE', align: 'center', noIndent: true, bold: true },
+            { text: 'A Thesis Submitted in Partial Fulfillment of the Requirements for the Degree of', align: 'center', noIndent: true },
+            { text: 'Master of Arts', align: 'center', noIndent: true },
+            { text: 'by', align: 'center', noIndent: true },
+            { text: 'Jane Doe', align: 'center', noIndent: true },
+            { text: 'State University', align: 'center', noIndent: true },
+            { text: 'May 2026', align: 'center', noIndent: true },
+            { text: 'Type over this text with your own. Chicago papers are double-spaced, 12-pt Times New Roman, 1-inch margins, with page numbers — applied automatically in Compile → Chicago.', noIndent: true }
           ]
         },
         {
@@ -675,9 +678,9 @@ function thesisTemplate(): TemplateNode[] {
           title: 'Chapter 1 — Introduction',
           synopsis: 'Problem, aims, significance.',
           body: [
-            'Chapter 1: Introduction',
+            { text: 'Chapter 1: Introduction', align: 'center', noIndent: true, bold: true },
             'Introduce the problem, state your aims, and explain why the work matters. Chicago’s notes–bibliography style cites sources with numbered footnotes.¹ Type over this paragraph with your own.',
-            '¹ First Last, Title of Book (Place of Publication: Publisher, Year), 12.'
+            { text: '¹ First Last, Title of Book (Place of Publication: Publisher, Year), 12.', noIndent: true }
           ]
         },
         {
@@ -717,10 +720,10 @@ function thesisTemplate(): TemplateNode[] {
       title: 'Bibliography',
       synopsis: 'Chicago entries — alphabetical, hanging indent (applied at compile).',
       body: [
-        'Bibliography',
-        'Last, First. Title of Book. Place of Publication: Publisher, Year.',
-        'Last, First. “Title of an Article.” Title of Journal Volume, no. Issue (Year): pages.',
-        'Last, First. “Title of a Web Page.” Site Name. Month Day, Year. https://www.example.com.'
+        { text: 'Bibliography', align: 'center', noIndent: true, bold: true },
+        { text: 'Last, First. Title of Book. Place of Publication: Publisher, Year.', noIndent: true },
+        { text: 'Last, First. “Title of an Article.” Title of Journal Volume, no. Issue (Year): pages.', noIndent: true },
+        { text: 'Last, First. “Title of a Web Page.” Site Name. Month Day, Year. https://www.example.com.', noIndent: true }
       ]
     },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }

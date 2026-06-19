@@ -5,7 +5,7 @@ import { join } from 'path'
 import { projectService } from './services/project'
 import { createItem, createItemFull, listBinder, moveItem, removeItem, setNotes } from './services/binder'
 import * as meta from './services/metadata'
-import { countWords, docFromParagraphs, emptyDoc, readDocument, writeDocument } from './services/documents'
+import { countWords, docFromParagraphs, emptyDoc, readDocument, writeDocument, type BodyLine } from './services/documents'
 import { createSnapshot, listSnapshots, restoreSnapshot } from './services/snapshots'
 import { createBackup } from './services/backups'
 import { applyReplace, previewReplace, searchProject } from './services/search'
@@ -162,41 +162,63 @@ async function runChecks(): Promise<void> {
       defaultPresetFor('thesis') === 'chicago',
     'academic types default to MLA / APA / Chicago'
   )
-  // The academic types seed style-correct example content the writer types over:
-  // sample headers/title pages, body prose with in-text citations, and a
-  // citation-list page with model entries.
+  // The academic types seed style-correct example content the writer types
+  // over: sample headers/title pages, body prose with in-text citations, and a
+  // citation-list page — with the right block formatting (centered titles,
+  // flush-left header lines).
   {
-    type TNode = { title: string; body?: string[]; children?: TNode[] }
+    type TNode = { title: string; body?: Array<string | BodyLine>; children?: TNode[] }
     const flatten = (nodes: TNode[]): TNode[] =>
       nodes.flatMap((n) => [n, ...(n.children ? flatten(n.children) : [])])
-    const hasBodyDoc = (type: Parameters<typeof getTemplate>[0], title: string, needle: string) =>
-      flatten(getTemplate(type) as TNode[]).some(
-        (n) => n.title === title && !!n.body && n.body.some((p) => p.includes(needle))
-      )
+    const text = (p: string | BodyLine): string => (typeof p === 'string' ? p : p.text)
+    const docNamed = (type: Parameters<typeof getTemplate>[0], title: string): TNode | undefined =>
+      flatten(getTemplate(type) as TNode[]).find((n) => n.title === title)
+    const bodyHas = (type: Parameters<typeof getTemplate>[0], title: string, needle: string): boolean =>
+      !!docNamed(type, title)?.body?.some((p) => text(p).includes(needle))
+    const line = (
+      type: Parameters<typeof getTemplate>[0],
+      title: string,
+      needle: string
+    ): BodyLine | undefined => {
+      const found = docNamed(type, title)?.body?.find((p) => text(p).includes(needle))
+      return typeof found === 'string' ? { text: found } : found
+    }
     assert(
-      hasBodyDoc('college-essay', 'Works Cited', 'Works Cited') &&
-        flatten(getTemplate('college-essay') as TNode[]).some(
-          (n) => n.title === 'Introduction' && !!n.body && n.body.some((p) => p.includes('(Author 12)'))
-        ),
-      'college-essay seeds an MLA header/citation example and a Works Cited page'
+      bodyHas('college-essay', 'Works Cited', 'Works Cited') &&
+        bodyHas('college-essay', 'Introduction', '(Author 12)') &&
+        line('college-essay', 'Introduction', 'A Concise, Descriptive Title')?.align === 'center' &&
+        line('college-essay', 'Introduction', 'Professor Rivera')?.noIndent === true,
+      'college-essay seeds an MLA flush-left header, a centered title, and a Works Cited page'
     )
     assert(
-      hasBodyDoc('academic-paper', 'References', 'References') &&
-        flatten(getTemplate('academic-paper') as TNode[]).some(
-          (n) => n.title === 'Title Page' && !!n.body && n.body.length > 0
-        ),
-      'academic-paper seeds an APA title page and a References page'
+      bodyHas('academic-paper', 'References', 'References') &&
+        line('academic-paper', 'Title Page', 'The Title of Your Paper')?.align === 'center' &&
+        line('academic-paper', 'Title Page', 'The Title of Your Paper')?.bold === true,
+      'academic-paper seeds a centered (bold-title) APA title page and a References page'
     )
     assert(
-      hasBodyDoc('thesis', 'Bibliography', 'Bibliography') &&
-        flatten(getTemplate('thesis') as TNode[]).some(
-          (n) =>
-            n.title === 'Chapter 1 — Introduction' &&
-            !!n.body &&
-            n.body.some((p) => p.startsWith('¹'))
-        ),
-      'thesis seeds a Chicago footnote example and a Bibliography page'
+      bodyHas('thesis', 'Bibliography', 'Bibliography') &&
+        bodyHas('thesis', 'Chapter 1 — Introduction', '¹ First Last') &&
+        line('thesis', 'Title Page', 'THE TITLE OF YOUR THESIS')?.align === 'center',
+      'thesis seeds a centered Chicago title page, a footnote example, and a Bibliography page'
     )
+  }
+  // docFromParagraphs maps rich body lines to paragraph attrs + a bold mark.
+  {
+    const seeded = docFromParagraphs([
+      'plain body',
+      { text: 'Centered Title', align: 'center', noIndent: true, bold: true },
+      { text: 'Flush line', noIndent: true }
+    ])
+    const [p0, p1, p2] = seeded.doc.content ?? []
+    assert(!p0?.attrs && p0?.content?.[0]?.text === 'plain body', 'plain string seeds a bare paragraph')
+    assert(
+      p1?.attrs?.align === 'center' &&
+        p1?.attrs?.noIndent === true &&
+        p1?.content?.[0]?.marks?.[0]?.type === 'bold',
+      'BodyLine seeds align/noIndent attrs and a bold mark'
+    )
+    assert(p2?.attrs?.noIndent === true && !p2?.attrs?.align, 'noIndent without align sets only noIndent')
   }
   assert(
     !!COMPILE_PRESETS['mla'] &&
@@ -454,6 +476,38 @@ async function runChecks(): Promise<void> {
   assert(
     tcHtml.includes('added') && tcHtml.includes('tail') && !tcHtml.includes('removed'),
     'compiled export excludes deletion-marked text'
+  )
+
+  // Block formatting (alignment + no-indent) carries through compile.
+  await writeDocument(paths.root, 'align-export-test', {
+    version: DOCUMENT_CONTENT_VERSION,
+    doc: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { align: 'center', noIndent: true },
+          content: [{ type: 'text', text: 'Centered Title' }]
+        },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Ordinary body paragraph.' }] }
+      ]
+    }
+  })
+  const alignReq = {
+    entries: [{ docId: 'align-export-test' }],
+    preset: COMPILE_PRESETS.mla,
+    meta: { title: 'A', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  }
+  const alignHtml = await compileToHtml(paths.root, alignReq)
+  assert(
+    alignHtml.includes('text-align:center') && alignHtml.includes('text-indent:0'),
+    'centered/no-indent paragraph compiles with alignment styles'
+  )
+  const alignDocx = await compileToDocxBuffer(paths.root, alignReq)
+  assert(
+    alignDocx.length > 0 && alignDocx[0] === 0x50 && alignDocx[1] === 0x4b,
+    'aligned document compiles to a valid .docx'
   )
 
   // Markdown / plain-text export.

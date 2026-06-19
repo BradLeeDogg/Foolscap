@@ -13,6 +13,7 @@ import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
 import { Screenplay } from '../editor/screenplay'
 import { Deletion, Insertion, TrackChanges, hasTrackedChanges } from '../editor/trackchanges'
+import { BlockFormat, type BlockAlign } from '../editor/blockformat'
 import { Proofreader, getProofIssues } from '../editor/proofreader'
 import { FindReplace, getFindState } from '../editor/findreplace'
 import { Image } from '../editor/image'
@@ -46,6 +47,19 @@ function insertImages(editor: Editor | null, files: File[]): void {
 function countWords(text: string): number {
   const t = text.trim()
   return t ? (t.match(/\S+/g)?.length ?? 0) : 0
+}
+
+/** Toolbar glyph: four stacked lines aligned left/center/right. */
+function AlignIcon({ a }: { a: BlockAlign }): JSX.Element {
+  const widths = [12, 7, 10, 6]
+  return (
+    <svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">
+      {widths.map((w, i) => {
+        const x = a === 'center' ? (16 - w) / 2 : a === 'right' ? 15 - w : 1
+        return <rect key={i} x={x} y={2 + i * 3} width={w} height="1.7" rx="0.8" fill="currentColor" />
+      })}
+    </svg>
+  )
 }
 
 export function paperStyle(m: ManuscriptDefaults): React.CSSProperties {
@@ -136,6 +150,7 @@ export default function DocumentEditor({
       Insertion,
       Deletion,
       TrackChanges,
+      BlockFormat,
       Proofreader,
       FindReplace,
       Image,
@@ -513,6 +528,10 @@ export default function DocumentEditor({
 
   const fmtActive = (name: string, attrs?: Record<string, unknown>): string =>
     editor?.isActive(name, attrs) ? 'on' : ''
+  const curAlign: BlockAlign =
+    (editor?.getAttributes('paragraph').align as BlockAlign) ||
+    (editor?.getAttributes('heading').align as BlockAlign) ||
+    'left'
 
   return (
     <div className="editor-pane">
@@ -552,6 +571,17 @@ export default function DocumentEditor({
           <button className={fmtActive('underline')} title="Underline (Ctrl/⌘ U)" onClick={() => editor.chain().focus().toggleUnderline().run()}>
             <span style={{ textDecoration: 'underline' }}>U</span>
           </button>
+          <span className="fmt-sep" />
+          {(['left', 'center', 'right'] as BlockAlign[]).map((a) => (
+            <button
+              key={a}
+              className={`fmt-align ${curAlign === a ? 'on' : ''}`}
+              title={`Align ${a}`}
+              onClick={() => editor.chain().focus().setBlockAlign(a).run()}
+            >
+              <AlignIcon a={a} />
+            </button>
+          ))}
           <span className="fmt-sep" />
           <button className={fmtActive('bulletList')} title="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}>
             •

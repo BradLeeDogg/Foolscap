@@ -11,13 +11,35 @@ export function emptyDoc(): DocumentContent {
   }
 }
 
+/** A seeded paragraph: plain text, or text with block formatting the writer
+ *  types over (centered titles, flush-left header lines, a bold label). */
+export interface BodyLine {
+  text: string
+  align?: 'center' | 'right'
+  /** Drop the body first-line indent (header lines, citation entries). */
+  noIndent?: boolean
+  /** Render the text in bold (e.g. an APA title or section label). */
+  bold?: boolean
+}
+
 /** A document seeded with one or more paragraphs of placeholder/body text. */
-export function docFromParagraphs(paragraphs: string[]): DocumentContent {
-  const content: ProseMirrorNode[] = paragraphs.map((text) =>
-    text
-      ? { type: 'paragraph', content: [{ type: 'text', text }] }
-      : { type: 'paragraph' }
-  )
+export function docFromParagraphs(paragraphs: Array<string | BodyLine>): DocumentContent {
+  const content: ProseMirrorNode[] = paragraphs.map((p) => {
+    const line: BodyLine = typeof p === 'string' ? { text: p } : p
+    const node: ProseMirrorNode = { type: 'paragraph' }
+    const attrs: Record<string, unknown> = {}
+    if (line.align) attrs.align = line.align
+    if (line.noIndent) attrs.noIndent = true
+    if (Object.keys(attrs).length) node.attrs = attrs
+    if (line.text) {
+      node.content = [
+        line.bold
+          ? { type: 'text', marks: [{ type: 'bold' }], text: line.text }
+          : { type: 'text', text: line.text }
+      ]
+    }
+    return node
+  })
   return { version: DOCUMENT_CONTENT_VERSION, doc: { type: 'doc', content } }
 }
 

@@ -441,6 +441,14 @@ fieldset.field {
 .manuscript .ProseMirror > p:first-child {
   text-indent: 0;
 }
+/* Block formatting (BlockFormat): flush-left header lines and centered/right
+   lines drop the body first-line indent so seeded MLA/APA/Chicago examples —
+   and anything the writer aligns — read correctly. */
+.manuscript .ProseMirror > p[data-no-indent='true'],
+.manuscript .ProseMirror > p[style*='center'],
+.manuscript .ProseMirror > p[style*='right'] {
+  text-indent: 0;
+}
 .manuscript .ProseMirror h1,
 .manuscript .ProseMirror h2,
 .manuscript .ProseMirror h3 {
@@ -1022,6 +1030,12 @@ kbd {
 .format-toolbar button.on {
   border-color: var(--accent);
   color: var(--accent);
+}
+.format-toolbar button.fmt-align {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
 }
 .fmt-sep {
   width: 1px;

@@ -94,8 +94,20 @@ function blockParagraphs(
             })
           )
         } else {
+          const align = node.attrs?.align
+          const alignment =
+            align === 'center' ? AlignmentType.CENTER
+            : align === 'right' ? AlignmentType.RIGHT
+            : align === 'justify' ? AlignmentType.JUSTIFIED
+            : undefined
+          const flush = node.attrs?.noIndent === true || align === 'center' || align === 'right'
           out.push(
-            new Paragraph({ children: inlineRuns(node.content, fns), spacing: bodySpacing(preset), indent })
+            new Paragraph({
+              children: inlineRuns(node.content, fns),
+              spacing: bodySpacing(preset),
+              indent: flush ? undefined : indent,
+              ...(alignment ? { alignment } : {})
+            })
           )
         }
         break
@@ -328,8 +340,18 @@ function blockHtml(content: ProseMirrorNode[] | undefined, notes: string[]): str
     switch (node.type) {
       case 'paragraph': {
         const sp = node.attrs?.sp
-        const cls = isScreenplayElement(sp) ? ` class="sp sp-${sp}"` : ''
-        html += `<p${cls}>${inlineHtml(node.content, notes)}</p>`
+        if (isScreenplayElement(sp)) {
+          html += `<p class="sp sp-${sp}">${inlineHtml(node.content, notes)}</p>`
+        } else {
+          const align = node.attrs?.align
+          const styles: string[] = []
+          if (align === 'center' || align === 'right' || align === 'justify' || align === 'left')
+            styles.push(`text-align:${align}`)
+          if (node.attrs?.noIndent === true || align === 'center' || align === 'right')
+            styles.push('text-indent:0')
+          const style = styles.length ? ` style="${styles.join(';')}"` : ''
+          html += `<p${style}>${inlineHtml(node.content, notes)}</p>`
+        }
         break
       }
       case 'heading':
