@@ -8,6 +8,9 @@ interface Props {
   onClose: () => void
 }
 
+// The citation page (Works Cited / References / Bibliography) — matched by title.
+const CITATION_TITLES = new Set(['works cited', 'references', 'bibliography'])
+
 function buildEntries(
   tree: Parameters<typeof childrenOf>[0],
   rootId: string | null
@@ -55,7 +58,20 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
   }
   const patch = (p: Partial<CompilePreset>): void => setPreset((cur) => ({ ...cur, ...p }))
 
-  const entries = useMemo(() => buildEntries(tree, rootId), [tree, rootId])
+  // The Works Cited / References / Bibliography page usually lives outside the
+  // body folder; append it as a final, standalone page so it actually compiles.
+  const citationDoc = useMemo(
+    () => tree.find((t) => t.type === 'document' && CITATION_TITLES.has(t.title.trim().toLowerCase())),
+    [tree]
+  )
+  const [appendCitations, setAppendCitations] = useState(true)
+  const entries = useMemo(() => {
+    const base = buildEntries(tree, rootId)
+    if (appendCitations && citationDoc && !base.some((e) => e.docId === citationDoc.id)) {
+      base.push({ docId: citationDoc.id, pageBreak: true })
+    }
+    return base
+  }, [tree, rootId, appendCitations, citationDoc])
   const docCount = entries.filter((e) => e.docId).length
 
   const request = (): Parameters<typeof window.api.compile.docx>[0] => ({
@@ -261,6 +277,16 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
               />
               Export fact-check packet alongside
             </label>
+            {citationDoc && (
+              <label className="compile-check">
+                <input
+                  type="checkbox"
+                  checked={appendCitations}
+                  onChange={(e) => setAppendCitations(e.target.checked)}
+                />
+                Append “{citationDoc.title}” as a final page
+              </label>
+            )}
           </section>
         </div>
 

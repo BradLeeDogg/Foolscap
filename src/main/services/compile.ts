@@ -249,7 +249,8 @@ export async function compileToDocxBuffer(root: string, req: CompileRequest): Pr
       )
       prevWasDoc = false
     } else if (e.docId) {
-      if (prevWasDoc && preset.sceneBreak) body.push(center(preset.sceneBreak, preset))
+      if (e.pageBreak) body.push(new Paragraph({ children: [new PageBreak()] }))
+      else if (prevWasDoc && preset.sceneBreak) body.push(center(preset.sceneBreak, preset))
       const c = contents[e.docId] as { doc?: ProseMirrorNode } | null
       body.push(...blockParagraphs(c?.doc?.content, preset, fns))
       prevWasDoc = true
@@ -419,7 +420,8 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
       body += `<h1 class="chapter">${esc(e.heading)}</h1>`
       prevWasDoc = false
     } else if (e.docId) {
-      if (prevWasDoc && preset.sceneBreak) body += `<p class="scene-break">${esc(preset.sceneBreak)}</p>`
+      if (e.pageBreak) body += '<div class="page-break"></div>'
+      else if (prevWasDoc && preset.sceneBreak) body += `<p class="scene-break">${esc(preset.sceneBreak)}</p>`
       body += blockHtml(contents[e.docId]?.doc?.content, notes)
       prevWasDoc = true
     }
@@ -445,6 +447,7 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
     ${spCss}
     p.scene-break, .title-page .title, .byauthor, .wc { text-indent: 0; }
     h1.chapter { page-break-before: always; text-align: center; margin: 2in 0 1in; font-size: ${preset.fontSizePt + 2}pt; }
+    .page-break { page-break-before: always; }
     h2 { text-indent: 0; font-size: ${preset.fontSizePt}pt; }
     blockquote { margin: 0 0 0 0.5in; }
     .scene-break { text-align: center; }
@@ -570,7 +573,8 @@ async function assemblePlain(root: string, req: CompileRequest, md: boolean): Pr
       out += (md ? `# ${e.heading}` : e.heading.toUpperCase()) + '\n\n'
       prevDoc = false
     } else if (e.docId) {
-      if (prevDoc && preset.sceneBreak) out += `${preset.sceneBreak}\n\n`
+      if (e.pageBreak) out += md ? '---\n\n' : '\n\n'
+      else if (prevDoc && preset.sceneBreak) out += `${preset.sceneBreak}\n\n`
       const c = await readDocument(root, e.docId)
       out += blockPlain(c?.doc?.content, notes, md)
       prevDoc = true
@@ -604,6 +608,15 @@ function xhtmlSafe(html: string): string {
   return html.replace(/<br>/g, '<br/>').replace(/<hr>/g, '<hr/>')
 }
 
+/** First non-empty paragraph's text — used as a fallback chapter title. */
+function firstLineText(c: { doc?: ProseMirrorNode } | null | undefined): string {
+  const first = c?.doc?.content?.find((n) => n.type === 'paragraph' && !!n.content?.length)
+  return (first?.content ?? [])
+    .map((t) => (typeof t.text === 'string' ? t.text : ''))
+    .join('')
+    .trim()
+}
+
 function buildChapters(req: CompileRequest, contents: Record<string, { doc?: ProseMirrorNode } | null>): EpubChapter[] {
   const chapters: EpubChapter[] = []
   let current: EpubChapter | null = null
@@ -615,7 +628,9 @@ function buildChapters(req: CompileRequest, contents: Record<string, { doc?: Pro
     if (e.heading) {
       ensure(e.heading)
     } else if (e.docId) {
-      if (!current) ensure(req.meta.title || 'Text')
+      // A page-break document (e.g. Works Cited) becomes its own ePub chapter.
+      if (e.pageBreak) ensure(firstLineText(contents[e.docId]) || req.meta.title || 'Text')
+      else if (!current) ensure(req.meta.title || 'Text')
       const notes: string[] = []
       let html = blockHtml(contents[e.docId]?.doc?.content, notes)
       if (notes.length) {

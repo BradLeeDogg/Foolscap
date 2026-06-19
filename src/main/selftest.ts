@@ -510,6 +510,34 @@ async function runChecks(): Promise<void> {
     'aligned document compiles to a valid .docx'
   )
 
+  // A page-break entry (Works Cited / References) lands on its own final page.
+  await writeDocument(paths.root, 'wc-export-test', {
+    version: DOCUMENT_CONTENT_VERSION,
+    doc: {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { align: 'center' }, content: [{ type: 'text', text: 'Works Cited' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Last, First. Title. Publisher, 2020.' }] }
+      ]
+    }
+  })
+  const wcReq = {
+    entries: [{ docId: 'align-export-test' }, { docId: 'wc-export-test', pageBreak: true }],
+    preset: COMPILE_PRESETS.mla,
+    meta: { title: 'A', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  }
+  const wcHtml = await compileToHtml(paths.root, wcReq)
+  assert(
+    wcHtml.includes('class="page-break"') && wcHtml.includes('Works Cited'),
+    'a page-break entry compiles a Works Cited page with a page break'
+  )
+  const wcDocx = await compileToDocxBuffer(paths.root, wcReq)
+  assert(
+    wcDocx[0] === 0x50 && wcDocx[1] === 0x4b,
+    'a compile stream with a page-break entry yields a valid .docx'
+  )
+
   // Markdown / plain-text export.
   await writeDocument(paths.root, 'md-export-test', {
     version: DOCUMENT_CONTENT_VERSION,
@@ -578,6 +606,14 @@ async function runChecks(): Promise<void> {
   assert(inTextCitation(webSrc, 'apa') === '(Smith, 2023)', 'APA in-text citation uses year')
   const bib = buildBibliography([webSrc, bookSrc], 'mla')
   assert(bib.heading === 'Works Cited', 'MLA bibliography heading is "Works Cited"')
+  assert(
+    bib.html.includes('<p style="text-align:center">Works Cited</p>'),
+    'bibliography centers its heading (so an inserted Works Cited is centered)'
+  )
+  assert(
+    buildBibliography([webSrc], 'apa').html.includes('text-align:center"><strong>References</strong>'),
+    'APA bibliography heading is centered and bold'
+  )
   assert(
     bib.text.indexOf('Whole Book') < bib.text.indexOf('Great Article'),
     'bibliography is sorted by author surname (Adams before Smith)'

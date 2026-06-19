@@ -269,6 +269,8 @@ export interface CompileMeta {
 export interface CompileEntry {
   heading?: string
   docId?: string
+  /** Start this entry on a fresh page (e.g. a Works Cited / References page). */
+  pageBreak?: boolean
 }
 
 export interface CompileRequest {
