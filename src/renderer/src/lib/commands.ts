@@ -15,9 +15,19 @@ export type AppCommand =
   | 'compile'
   | 'snapshot'
   | 'quick-open'
+  | 'command-palette'
   | 'view-corkboard'
   | 'view-outliner'
   | 'view-scrivenings'
+  | 'panel-sources'
+  | 'panel-factcheck'
+  | 'panel-transcripts'
+  | 'panel-proofread'
+  | 'panel-targets'
+  | 'panel-inspector'
+  | 'open-settings'
+  | 'backup-now'
+  | 'toggle-theme'
 
 export function runCommand(cmd: AppCommand): void {
   window.dispatchEvent(new CustomEvent('wp:cmd', { detail: cmd }))

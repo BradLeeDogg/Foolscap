@@ -19,6 +19,7 @@ import CompileDialog from './CompileDialog'
 import SettingsDialog from './SettingsDialog'
 import CompositionMode from './CompositionMode'
 import QuickOpen from './QuickOpen'
+import CommandPalette from './CommandPalette'
 
 function saveLabel(state: string, at: number | null): string {
   switch (state) {
@@ -44,6 +45,7 @@ export default function Workspace(): JSX.Element {
   const selectionWordCount = useStore((s) => s.selectionWordCount)
   const splitId = useStore((s) => s.splitId)
   const viewSourceId = useStore((s) => s.viewSourceId)
+  const setMeta = useStore((s) => s.setMeta)
   const setSplit = useStore((s) => s.setSplit)
   const composition = useStore((s) => s.composition)
   const setComposition = useStore((s) => s.setComposition)
@@ -62,6 +64,7 @@ export default function Workspace(): JSX.Element {
   const [showCompile, setShowCompile] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showQuickOpen, setShowQuickOpen] = useState(false)
+  const [showPalette, setShowPalette] = useState(false)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
 
   // Workspace-owned menu/shortcut commands (ref keeps handler closures fresh).
@@ -93,6 +96,38 @@ export default function Workspace(): JSX.Element {
       case 'view-scrivenings':
         setFolderView('scrivenings')
         break
+      case 'command-palette':
+        setShowPalette(true)
+        break
+      case 'panel-inspector':
+        setShowInspector((v) => !v)
+        break
+      case 'panel-sources':
+        setShowSources((v) => !v)
+        break
+      case 'panel-factcheck':
+        setShowFactCheck((v) => !v)
+        break
+      case 'panel-transcripts':
+        setShowTranscripts((v) => !v)
+        break
+      case 'panel-proofread':
+        setShowProof((v) => !v)
+        break
+      case 'panel-targets':
+        setShowTargets((v) => !v)
+        break
+      case 'open-settings':
+        setShowSettings(true)
+        break
+      case 'backup-now':
+        void handleBackup()
+        break
+      case 'toggle-theme': {
+        const next = useStore.getState().meta?.settings.theme === 'dark' ? 'paper' : 'dark'
+        void window.api.project.updateSettings({ theme: next }).then(setMeta)
+        break
+      }
     }
   }
   useEffect(() => onCommand((cmd) => cmdRef.current(cmd)), [])
@@ -306,6 +341,7 @@ export default function Workspace(): JSX.Element {
       {showCompile && <CompileDialog onClose={() => setShowCompile(false)} />}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showQuickOpen && <QuickOpen onClose={() => setShowQuickOpen(false)} />}
+      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
     </div>
   )
 }

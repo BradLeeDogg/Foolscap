@@ -48,6 +48,7 @@ function buildAppMenu(win: BrowserWindow): void {
     {
       label: 'View',
       submenu: [
+        { label: 'Command Palette…', accelerator: 'CmdOrCtrl+K', click: send('command-palette') },
         { label: 'Go to…', accelerator: 'CmdOrCtrl+P', click: send('quick-open') },
         { type: 'separator' },
         { label: 'Scrivenings', accelerator: 'CmdOrCtrl+1', click: send('view-scrivenings') },
@@ -187,13 +188,16 @@ app.whenReady().then(() => {
               await step(() => S.getState().setFolderView('scrivenings'), 450);
               const doc = S.getState().tree.find((t) => t.type === 'document');
               if (doc) S.getState().setSplit(doc.id);
+              await step(() => window.dispatchEvent(new CustomEvent('wp:cmd', { detail: 'command-palette' })), 350);
+              await step(() => S.getState().viewSource('smoke-none'), 350);
+              await step(() => S.getState().closeViewSource(), 250);
               await step(() => S.getState().setComposition(true), 450);
               await step(() => S.getState().setComposition(false), 450);
             })();
           })`
         )
         setTimeout(() => {
-          console.log('WP_SMOKE_WORKSPACE_OK: workspace, find, quick-open, inspector, sources, fact-check, transcripts, proofread, corkboard, outliner, split & composition mounted')
+          console.log('WP_SMOKE_WORKSPACE_OK: workspace, find, quick-open, command-palette, research-viewer, inspector, sources, fact-check, transcripts, proofread, corkboard, outliner, split & composition mounted')
           app.quit()
         }, 4200)
       } catch (err) {

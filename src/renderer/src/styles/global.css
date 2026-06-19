@@ -1370,6 +1370,13 @@ button.on {
 .quickopen-list li.active {
   background: var(--selected);
 }
+.cmd-hint {
+  margin-left: auto;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
 .quickopen-title {
   overflow: hidden;
   text-overflow: ellipsis;
