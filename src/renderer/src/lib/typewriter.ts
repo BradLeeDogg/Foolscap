@@ -11,6 +11,9 @@ function audio(): AudioContext | null {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     ctx = ctx ?? new AC()
+    // Chromium suspends the context on focus/fullscreen changes (e.g. entering
+    // Composition); resume it — we're inside a keydown gesture, so this is allowed.
+    if (ctx.state === 'suspended') void ctx.resume()
     if (!noise) {
       // ~80ms of white noise, reused for every strike.
       const len = Math.floor(ctx.sampleRate * 0.08)
