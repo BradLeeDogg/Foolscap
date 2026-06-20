@@ -438,9 +438,9 @@ fieldset.field {
   margin: 0;
   text-indent: 0.5in;
 }
-.manuscript .ProseMirror > p:first-child {
-  text-indent: 0;
-}
+/* Every body paragraph — including the first line of each document — is
+   indented, matching MLA/APA/Chicago and the compiled DOCX/PDF. Flush-left
+   header lines and centered titles opt out via the rules just below. */
 /* Block formatting (BlockFormat): flush-left header lines and centered/right
    lines drop the body first-line indent so seeded MLA/APA/Chicago examples —
    and anything the writer aligns — read correctly. */
