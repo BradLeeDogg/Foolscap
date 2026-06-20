@@ -91,6 +91,11 @@ const api: FoolscapAPI = {
     open: (id) => ipcRenderer.invoke('source:open', id),
     openExternal: (id) => ipcRenderer.invoke('source:openExternal', id)
   },
+  pdfAnnot: {
+    get: (id) => ipcRenderer.invoke('pdfAnnot:get', id),
+    save: (id, data) => ipcRenderer.invoke('pdfAnnot:save', id, data),
+    export: (id, data) => ipcRenderer.invoke('pdfAnnot:export', id, data)
+  },
   clipboard: {
     write: (text, html) => ipcRenderer.invoke('clipboard:write', text, html)
   },

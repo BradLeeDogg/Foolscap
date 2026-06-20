@@ -27,7 +27,9 @@
     "dompurify": "^3.4.10",
     "jsdom": "^25.0.1",
     "mammoth": "^1.12.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.8.69"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -3,6 +3,7 @@ import type { SourceContent } from '@shared/api'
 import { inTextCitation, type CitationStyle } from '@shared/citations'
 import { defaultPresetFor } from '@shared/presets'
 import { useStore } from '../store/useStore'
+import PdfAnnotator from './PdfAnnotator'
 
 /** Reads a source beside the draft; pull a selected quote into a footnote/citation. */
 export default function ResearchViewer(): JSX.Element | null {
@@ -14,12 +15,14 @@ export default function ResearchViewer(): JSX.Element | null {
 
   const [content, setContent] = useState<SourceContent | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfFailed, setPdfFailed] = useState(false)
   const [quote, setQuote] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
     setContent(null)
     setQuote('')
+    setPdfFailed(false)
     if (id) void window.api.source.open(id).then(setContent)
   }, [id])
 
@@ -100,7 +103,10 @@ export default function ResearchViewer(): JSX.Element | null {
           />
         )}
         {content?.type === 'image' && <img className="rv-image" src={content.dataUrl} alt={src?.title} />}
-        {content?.type === 'pdf' &&
+        {content?.type === 'pdf' && content.dataUrl && !pdfFailed && (
+          <PdfAnnotator sourceId={id} dataUrl={content.dataUrl} onError={() => setPdfFailed(true)} />
+        )}
+        {content?.type === 'pdf' && pdfFailed &&
           (pdfUrl ? (
             <iframe className="rv-pdf" src={pdfUrl} title={src?.title} />
           ) : (

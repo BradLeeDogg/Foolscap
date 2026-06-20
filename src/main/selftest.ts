@@ -36,6 +36,7 @@ import { imageSize, fitWidth } from '@shared/imagesize'
 import { trashItem, restoreItem, listTrash, mergeWithPrevious } from './services/binder'
 import { htmlToProseMirror, markdownToProseMirror, parseScrivener, pdfTextToParagraphs } from './services/importer'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
+import { exportAnnotatedPdf, getAnnotations, saveAnnotations } from './services/pdfannotations'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
   addSegment,
@@ -660,6 +661,36 @@ async function runChecks(): Promise<void> {
     assert(
       bookCite.html.includes('<em>On Writing Well</em>') && bookCite.text.includes('Harper, 2006.'),
       'a manual book formats as an MLA book entry (italic title, publisher, year)'
+    )
+  }
+
+  // PDF annotations: persistence round-trip + annotated-PDF export (pdf-lib).
+  {
+    const { paths } = projectService.requireCurrent()
+    const { PDFDocument } = await import('pdf-lib')
+    const srcDoc = await PDFDocument.create()
+    srcDoc.addPage([320, 420])
+    const rel = join('assets', 'annot-src.pdf')
+    await fs.mkdir(join(paths.root, 'assets'), { recursive: true })
+    await fs.writeFile(join(paths.root, rel), await srcDoc.save())
+
+    const ann = {
+      highlights: [{ id: 'h1', page: 1, rect: { x: 0.1, y: 0.1, w: 0.3, h: 0.05 }, color: '#ffe066' }],
+      notes: [{ id: 'n1', page: 1, x: 0.5, y: 0.5, text: 'A margin note' }]
+    }
+    await saveAnnotations(paths.root, 'annot-src', ann)
+    const back = await getAnnotations(paths.root, 'annot-src')
+    assert(
+      back.highlights.length === 1 && back.notes[0]?.text === 'A margin note',
+      'PDF annotations persist and reload'
+    )
+
+    const outPath = join(paths.root, 'annot-out.pdf')
+    await exportAnnotatedPdf(paths.root, rel, ann, outPath)
+    const out = await fs.readFile(outPath)
+    assert(
+      out.length > 0 && out.slice(0, 5).toString() === '%PDF-',
+      'annotated PDF exports as a valid PDF'
     )
   }
 

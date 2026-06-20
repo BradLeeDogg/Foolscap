@@ -22,6 +22,7 @@ import type {
   Transcript,
   TranscriptWithSegments
 } from './types'
+import type { PdfAnnotations } from './pdfannot'
 
 export interface ManualSourceInput {
   kind: SourceKind
@@ -272,6 +273,14 @@ export interface FoolscapAPI {
     open(id: string): Promise<SourceContent | null>
     /** Open a stored source file in the OS default app (PDFs, etc.). */
     openExternal(id: string): Promise<void>
+  }
+  pdfAnnot: {
+    /** Load saved highlights + notes for a PDF source. */
+    get(id: string): Promise<PdfAnnotations>
+    /** Persist highlights + notes for a PDF source. */
+    save(id: string, data: PdfAnnotations): Promise<void>
+    /** Burn annotations into a copy of the PDF; returns the path, or null if cancelled. */
+    export(id: string, data: PdfAnnotations): Promise<string | null>
   }
   clipboard: {
     /** Write rich content so a paste keeps italics (into the editor or Word). */

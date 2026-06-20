@@ -662,6 +662,135 @@ fieldset.field {
   height: 100%;
   border: 0;
 }
+
+/* --- PDF annotator -------------------------------------------------------- */
+.pdf-annot {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.pdf-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--card);
+  flex-wrap: wrap;
+}
+.pdf-tools button {
+  min-width: 26px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+.pdf-tools button:hover {
+  border-color: var(--rule-strong);
+}
+.pdf-tools button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pdf-colors {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+}
+.pdf-swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.pdf-swatch.on {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.pdf-msg {
+  font-size: 0.74rem;
+  margin-left: 6px;
+}
+.pdf-pages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--rule);
+  padding: 12px;
+}
+.pdf-pages.tool-highlight,
+.pdf-pages.tool-note {
+  cursor: crosshair;
+}
+.pdf-page {
+  position: relative;
+  width: max-content;
+  margin: 0 auto 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.pdf-page canvas {
+  display: block;
+}
+.pdf-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.pdf-pages.tool-select .pdf-overlay {
+  pointer-events: none;
+}
+.pdf-hl {
+  position: absolute;
+  opacity: 0.4;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.pdf-pages.tool-select .pdf-hl {
+  pointer-events: auto;
+}
+.pdf-hl-drag {
+  opacity: 0.3;
+  outline: 1px dashed rgba(0, 0, 0, 0.45);
+}
+.pdf-hl-x {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  display: none;
+}
+.pdf-hl:hover .pdf-hl-x {
+  display: block;
+}
+.pdf-note {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50% 50% 50% 2px;
+  background: #ffd43b;
+  border: 1px solid #a8851a;
+  color: #3a2f06;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+}
 .rv-ext {
   font-size: 0.9rem;
   background: transparent;

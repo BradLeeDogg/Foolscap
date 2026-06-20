@@ -22,6 +22,8 @@ import { applyReplace, previewReplace, searchProject } from '../services/search'
 import { createCollection, listCollections, removeCollection } from '../services/collections'
 import * as metadata from '../services/metadata'
 import * as sources from '../services/sources'
+import * as pdfAnnotations from '../services/pdfannotations'
+import type { PdfAnnotations } from '@shared/pdfannot'
 import * as factcheck from '../services/factcheck'
 import * as transcripts from '../services/transcripts'
 import {
@@ -402,6 +404,30 @@ export function registerIpc(): void {
     const { db, paths } = projectService.requireCurrent()
     const s = sources.getSource(db, id)
     if (s?.filePath) await shell.openPath(join(paths.root, s.filePath))
+  })
+
+  // --- PDF annotations (highlights + notes on a PDF source) -----------------
+  ipcMain.handle('pdfAnnot:get', (_e, id: string) => {
+    const { paths } = projectService.requireCurrent()
+    return pdfAnnotations.getAnnotations(paths.root, id)
+  })
+  ipcMain.handle('pdfAnnot:save', (_e, id: string, data: PdfAnnotations) => {
+    const { paths } = projectService.requireCurrent()
+    return pdfAnnotations.saveAnnotations(paths.root, id, data)
+  })
+  ipcMain.handle('pdfAnnot:export', async (_e, id: string, data: PdfAnnotations) => {
+    const { db, paths } = projectService.requireCurrent()
+    const s = sources.getSource(db, id)
+    if (!s?.filePath) return null
+    const base = (s.title || 'annotated').replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
+    const res = await dialog.showSaveDialog(focusedWindow()!, {
+      title: 'Export annotated PDF',
+      defaultPath: `${base} (annotated).pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    await pdfAnnotations.exportAnnotatedPdf(paths.root, s.filePath, data, res.filePath)
+    return res.filePath
   })
 
   // --- clipboard (rich copy: keeps italics when pasted into the editor/Word) --

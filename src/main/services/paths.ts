@@ -36,3 +36,8 @@ export function documentFile(root: string, id: string): string {
 export function snapshotFile(root: string, id: string): string {
   return join(root, 'snapshots', `${id}.json`)
 }
+
+/** Sidecar JSON holding a PDF source's highlights + notes. */
+export function pdfAnnotationsFile(root: string, id: string): string {
+  return join(root, 'research', `${id}.annot.json`)
+}
