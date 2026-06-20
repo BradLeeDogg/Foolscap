@@ -34,7 +34,7 @@ import { diffLines } from '@shared/diff'
 import { classifySourceFile } from '@shared/sourcefile'
 import { imageSize, fitWidth } from '@shared/imagesize'
 import { trashItem, restoreItem, listTrash, mergeWithPrevious } from './services/binder'
-import { htmlToProseMirror, markdownToProseMirror, parseScrivener, pdfTextToParagraphs } from './services/importer'
+import { classifyPdfBlocks, htmlToProseMirror, markdownToProseMirror, parseScrivener, pdfTextToParagraphs } from './services/importer'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { exportAnnotatedPdf, getAnnotations, saveAnnotations } from './services/pdfannotations'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
@@ -930,6 +930,26 @@ async function runChecks(): Promise<void> {
       pdfParas[0] === 'First line still first paragraph' &&
       pdfParas[2] === 'Third page',
     'PDF text joins soft-wrapped lines and splits on blank lines / page breaks'
+  )
+  // Structure-aware PDF import: big lines become headings; gaps split paragraphs.
+  const pdfBlocks = classifyPdfBlocks([
+    { page: 1, y: 500, size: 28, text: 'Document Title' },
+    { page: 1, y: 460, size: 12, text: 'First paragraph line one' },
+    { page: 1, y: 445, size: 12, text: 'continues on line two' },
+    { page: 1, y: 400, size: 12, text: 'Second paragraph here' },
+    { page: 1, y: 360, size: 18, text: 'A Subheading' },
+    { page: 1, y: 340, size: 12, text: 'Body under subheading' }
+  ])
+  assert(
+    pdfBlocks.length === 5 &&
+      pdfBlocks[0]?.type === 'heading' &&
+      pdfBlocks[0].level === 1 &&
+      pdfBlocks[1]?.type === 'para' &&
+      pdfBlocks[1].text === 'First paragraph line one continues on line two' &&
+      pdfBlocks[2]?.type === 'para' &&
+      pdfBlocks[3]?.type === 'heading' &&
+      pdfBlocks[3].level === 2,
+    'PDF import detects headings by font size and splits paragraphs on gaps'
   )
 
   // Minimal Scrivener project fixture (best-effort import).

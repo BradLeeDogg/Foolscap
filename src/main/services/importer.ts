@@ -142,7 +142,7 @@ function textToProseMirror(text: string): DocumentContent {
 /**
  * Split text extracted from a PDF into clean, editable paragraphs: form-feeds
  * (page breaks) and blank lines separate paragraphs, while the soft line-wraps
- * within a paragraph are joined back into flowing text.
+ * within a paragraph are joined back into flowing text. (Fallback path.)
  */
 export function pdfTextToParagraphs(raw: string): string[] {
   return raw
@@ -153,10 +153,107 @@ export function pdfTextToParagraphs(raw: string): string[] {
     .filter(Boolean)
 }
 
-function pdfToProseMirror(text: string): DocumentContent {
+/** One visual line of a PDF, with its page, vertical position, and font size. */
+export interface PdfLine {
+  page: number
+  y: number
+  size: number
+  text: string
+}
+
+export type PdfBlock =
+  | { type: 'heading'; level: number; text: string }
+  | { type: 'para'; text: string }
+
+/**
+ * Turn positioned PDF lines into structured blocks: lines noticeably larger than
+ * the body font (and short) become headings; the rest flow into paragraphs that
+ * break on blank-line gaps and page boundaries. Keeps the import editable while
+ * recovering the document's headings and paragraphing.
+ */
+export function classifyPdfBlocks(lines: PdfLine[]): PdfBlock[] {
+  const clean = lines
+    .map((l) => ({ ...l, text: l.text.replace(/\s+/g, ' ').trim() }))
+    .filter((l) => l.text)
+  if (!clean.length) return []
+
+  // Body size = the size covering the most characters (i.e. the running text).
+  const weight = new Map<number, number>()
+  for (const l of clean) {
+    const s = Math.round(l.size)
+    weight.set(s, (weight.get(s) ?? 0) + l.text.length)
+  }
+  let body = 12
+  let best = -1
+  for (const [s, n] of weight) if (n > best) [best, body] = [n, s]
+
+  const level = (size: number): number => {
+    const r = size / body
+    if (r >= 1.7) return 1
+    if (r >= 1.4) return 2
+    if (r >= 1.2) return 3
+    return 0
+  }
+
+  const blocks: PdfBlock[] = []
+  let para: string[] = []
+  const flush = (): void => {
+    if (para.length) blocks.push({ type: 'para', text: para.join(' ') })
+    para = []
+  }
+  let prev: PdfLine | null = null
+  for (const l of clean) {
+    const lvl = level(l.size)
+    const isHeading = lvl > 0 && l.text.split(/\s+/).length <= 16
+    const samePage = prev !== null && prev.page === l.page
+    const blankGap = samePage ? prev!.y - l.y > l.size * 1.8 : true
+    if (isHeading) {
+      flush()
+      blocks.push({ type: 'heading', level: lvl, text: l.text })
+    } else {
+      if (blankGap) flush()
+      para.push(l.text)
+    }
+    prev = l
+  }
+  flush()
+  return blocks
+}
+
+/** Extract positioned lines from a PDF (text grouped by row, with font size). */
+async function extractPdfLines(buffer: Buffer): Promise<PdfLine[]> {
+  const lines: PdfLine[] = []
+  let pageNum = 0
+  await pdfParse(buffer, {
+    pagerender: async (pageData) => {
+      pageNum++
+      const page = pageNum
+      const tc = await pageData.getTextContent({ disableCombineTextItems: false })
+      let cur: { y: number; size: number; text: string } | null = null
+      for (const it of tc.items) {
+        const y = it.transform[5] ?? 0
+        const size = Math.hypot(it.transform[2] ?? 0, it.transform[3] ?? 0) || it.height || 12
+        if (cur && Math.abs(cur.y - y) <= 1.5) {
+          cur.text += it.str
+          cur.size = Math.max(cur.size, size)
+        } else {
+          if (cur) lines.push({ page, ...cur })
+          cur = { y, size, text: it.str }
+        }
+      }
+      if (cur) lines.push({ page, ...cur })
+      return ''
+    }
+  })
+  return lines
+}
+
+function blocksToProseMirror(blocks: PdfBlock[]): DocumentContent {
   return wrap(
-    pdfTextToParagraphs(text).map(
-      (p) => ({ type: 'paragraph', content: [{ type: 'text', text: p }] }) as ProseMirrorNode
+    blocks.map((b) =>
+      b.type === 'heading'
+        ? ({ type: 'heading', attrs: { level: b.level }, content: [{ type: 'text', text: b.text }] } as ProseMirrorNode)
+        : ({ type: 'paragraph', content: [{ type: 'text', text: b.text }] } as ProseMirrorNode)
     )
   )
 }
@@ -258,12 +355,11 @@ export async function importFromFile(path: string): Promise<ImportResult> {
     return { title, content: textToProseMirror(await fs.readFile(path, 'utf8')) }
   }
   if (ext === '.pdf') {
-    const { text } = await pdfParse(await fs.readFile(path))
-    const content = pdfToProseMirror(text)
-    if (!content.doc.content?.some((n) => n.content?.length)) {
+    const blocks = classifyPdfBlocks(await extractPdfLines(await fs.readFile(path)))
+    if (!blocks.length) {
       throw new Error('No selectable text found in this PDF — it may be scanned images.')
     }
-    return { title, content }
+    return { title, content: blocksToProseMirror(blocks) }
   }
   throw new Error(`Unsupported file type: ${ext}`)
 }
