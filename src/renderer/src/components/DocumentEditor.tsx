@@ -22,6 +22,7 @@ import { mergeDocs } from '@shared/docops'
 import type { ProofOptions } from '@shared/proofreader'
 import { listComments, listFootnotes } from '../editor/annotations'
 import { playKeyClick, playReturn } from '../lib/typewriter'
+import { smartQuoteFor } from '@shared/smartquotes'
 import AnnotationsPanel from './AnnotationsPanel'
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
@@ -47,6 +48,17 @@ function insertImages(editor: Editor | null, files: File[]): void {
 function countWords(text: string): number {
   const t = text.trim()
   return t ? (t.match(/\S+/g)?.length ?? 0) : 0
+}
+
+/** Toolbar/bubble glyph: a left rule with two indented lines (block quote). */
+function BlockquoteIcon(): JSX.Element {
+  return (
+    <svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">
+      <rect x="1" y="2" width="2.2" height="10" rx="1" fill="currentColor" />
+      <rect x="6" y="3.5" width="9" height="1.7" rx="0.8" fill="currentColor" />
+      <rect x="6" y="8" width="6.5" height="1.7" rx="0.8" fill="currentColor" />
+    </svg>
+  )
 }
 
 /** Toolbar glyph: four stacked lines aligned left/center/right. */
@@ -168,6 +180,15 @@ export default function DocumentEditor({
           }
           return false
         }
+      },
+      // Smart quotes: turn a typed " or ' into its curly form (toggleable).
+      handleTextInput: (view, from, to, text) => {
+        if (text !== '"' && text !== "'") return false
+        if (useStore.getState().meta?.settings.smartQuotes === false) return false
+        const prev = from > 0 ? view.state.doc.textBetween(from - 1, from, undefined, ' ') : ''
+        const curly = smartQuoteFor(prev, text as '"' | "'")
+        view.dispatch(view.state.tr.insertText(curly, from, to).scrollIntoView())
+        return true
       },
       handlePaste: (_view, event) => {
         const files = Array.from((event as ClipboardEvent).clipboardData?.files ?? []).filter((f) =>
@@ -509,6 +530,13 @@ export default function DocumentEditor({
       <button className={editor.isActive('underline') ? 'on' : ''} onClick={() => editor.chain().focus().toggleUnderline().run()}>
         <span style={{ textDecoration: 'underline' }}>U</span>
       </button>
+      <button
+        className={`bubble-icon ${editor.isActive('blockquote') ? 'on' : ''}`}
+        title="Block quote — indented, no quotation marks (MLA / APA / Chicago)"
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      >
+        <BlockquoteIcon />
+      </button>
       <span className="bubble-sep" />
       <button onClick={addComment} title="Comment on selection">❝</button>
       <button onClick={addFootnote} title="Footnote">†</button>
@@ -589,8 +617,12 @@ export default function DocumentEditor({
           <button className={fmtActive('orderedList')} title="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
             1.
           </button>
-          <button className={fmtActive('blockquote')} title="Block quote" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-            ❝
+          <button
+            className={`fmt-align ${fmtActive('blockquote')}`}
+            title="Block quote — indented, no quotation marks (MLA / APA / Chicago)"
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          >
+            <BlockquoteIcon />
           </button>
           <button title="Insert image" onClick={() => imgInputRef.current?.click()}>
             🖼

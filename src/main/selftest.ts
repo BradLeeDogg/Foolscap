@@ -26,6 +26,7 @@ import { acceptAllChanges, hasTrackedChanges, rejectAllChanges } from '@shared/t
 import { proofread, type Issue } from '@shared/proofreader'
 import { AME_TO_BRE, BRE_TO_AME } from '@shared/dialect'
 import { findRanges } from '@shared/find'
+import { smartQuoteFor } from '@shared/smartquotes'
 import { countInDoc, replaceInDoc } from '@shared/replace'
 import { analyze } from '@shared/analysis'
 import { mergeDocs, docLines } from '@shared/docops'
@@ -602,6 +603,20 @@ async function runChecks(): Promise<void> {
     formatCitation(webSrc, 'chicago').text.includes('Accessed March 5, 2024'),
     'Chicago web entry includes a spelled-out accessed date'
   )
+  // Smart quotes: open vs. close chosen from the preceding character.
+  assert(
+    smartQuoteFor('', '"') === '“' && smartQuoteFor(' ', '"') === '“' && smartQuoteFor('(', '"') === '“',
+    'a double quote opens at the start / after space or bracket'
+  )
+  assert(
+    smartQuoteFor('word', '"') === '”' && smartQuoteFor('.', '"') === '”',
+    'a double quote closes after a letter or punctuation'
+  )
+  assert(
+    smartQuoteFor('n', "'") === '’' && smartQuoteFor('', "'") === '‘',
+    'apostrophe/single quote curls correctly (it’s vs ‘quote’)'
+  )
+
   assert(inTextCitation(webSrc, 'mla') === '(Smith 12-14)', 'MLA in-text citation uses page')
   assert(inTextCitation(webSrc, 'apa') === '(Smith, 2023)', 'APA in-text citation uses year')
   const bib = buildBibliography([webSrc, bookSrc], 'mla')

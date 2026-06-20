@@ -74,6 +74,8 @@ export interface ProjectSettings {
   factCheckEnabled: boolean
   theme: 'paper' | 'dark'
   typewriterSound: boolean
+  /** Convert straight quotes/apostrophes to typographic “curly” ones as you type. */
+  smartQuotes?: boolean
   /** Proofreading dialect (drives spell-check dictionary + style checks). */
   english?: 'american' | 'british'
   /** Enforce the Oxford/serial comma (applies in both dialects). */

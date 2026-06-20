@@ -48,6 +48,7 @@ function defaultSettings(type: ProjectType): ProjectSettings {
     factCheckEnabled: factCheckDefault(type),
     theme: 'paper',
     typewriterSound: false,
+    smartQuotes: true,
     english: 'american',
     oxfordComma: true,
     autosaveDebounceMs: 800,
@@ -88,7 +89,15 @@ class ProjectService {
     if (!id || !title || !type || !path || !settingsRaw) {
       throw new Error('Project metadata is incomplete or corrupt')
     }
-    return { id, title, type, path, settings: JSON.parse(settingsRaw), createdAt, updatedAt }
+    // Merge over defaults so projects created before a setting existed still get
+    // a sensible value for it (e.g. smartQuotes) instead of undefined.
+    const parsed = JSON.parse(settingsRaw) as Partial<ProjectSettings>
+    const settings: ProjectSettings = {
+      ...defaultSettings(type),
+      ...parsed,
+      manuscript: { ...DEFAULT_MANUSCRIPT, ...(parsed.manuscript ?? {}) }
+    }
+    return { id, title, type, path, settings, createdAt, updatedAt }
   }
 
   private persistMeta(db: DB, meta: ProjectMeta): void {

@@ -462,11 +462,16 @@ fieldset.field {
 .manuscript .ProseMirror h2 {
   font-size: 1.2em;
 }
+/* Academic block quotation: indented 0.5in, no quotation marks, no first-line
+   indent — matches MLA/APA/Chicago (and the compiled output). */
 .manuscript .ProseMirror blockquote {
-  border-left: 2px solid var(--rule-strong);
-  margin-left: 0;
-  padding-left: 1em;
-  color: var(--ink-soft);
+  margin: 0 0 0 0.5in;
+  padding: 0;
+  border: none;
+  color: inherit;
+}
+.manuscript .ProseMirror blockquote > p {
+  text-indent: 0;
 }
 .manuscript .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
@@ -1220,6 +1225,11 @@ kbd {
 }
 .bubble button.on {
   background: rgba(255, 255, 255, 0.28);
+}
+.bubble button.bubble-icon {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
 }
 .bubble-sep {
   width: 1px;
