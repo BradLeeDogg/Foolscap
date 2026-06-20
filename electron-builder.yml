@@ -6,6 +6,8 @@ directories:
 files:
   - out/**/*
   - package.json
+  # pdf-parse ships several MB of sample PDFs under test/ — not needed at runtime
+  - "!**/node_modules/pdf-parse/test/**"
 asarUnpack:
   # native module must live unpacked so its .node binary is loadable
   - "**/node_modules/better-sqlite3/**"

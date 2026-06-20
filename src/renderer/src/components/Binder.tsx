@@ -122,10 +122,14 @@ export default function Binder(): JSX.Element {
   }
 
   const importDoc = async (): Promise<void> => {
-    const res = await window.api.importer.file(newItemParent())
-    if (res) {
-      setTree(res.tree)
-      select(res.item.id)
+    try {
+      const res = await window.api.importer.file(newItemParent())
+      if (res) {
+        setTree(res.tree)
+        select(res.item.id)
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not import that file.')
     }
   }
 
@@ -260,7 +264,7 @@ export default function Binder(): JSX.Element {
         <button title="New document" onClick={() => addItem('document')}>
           ＋ Doc
         </button>
-        <button title="Import DOCX / Markdown / RTF / TXT" onClick={importDoc}>
+        <button title="Import PDF / DOCX / Markdown / RTF / TXT as an editable document" onClick={importDoc}>
           ⤓
         </button>
         <button title="Import Scrivener project (.scriv)" onClick={importScriv}>

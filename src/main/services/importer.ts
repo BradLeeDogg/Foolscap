@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import { basename, extname, join } from 'path'
 import { JSDOM } from 'jsdom'
 import mammoth from 'mammoth'
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import type { DocumentContent, ProseMirrorNode } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 
@@ -136,6 +137,30 @@ function textToProseMirror(text: string): DocumentContent {
   return wrap(content)
 }
 
+// --- PDF --------------------------------------------------------------------
+
+/**
+ * Split text extracted from a PDF into clean, editable paragraphs: form-feeds
+ * (page breaks) and blank lines separate paragraphs, while the soft line-wraps
+ * within a paragraph are joined back into flowing text.
+ */
+export function pdfTextToParagraphs(raw: string): string[] {
+  return raw
+    .replace(/\r\n/g, '\n')
+    .replace(/\f/g, '\n\n')
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/\n+/g, ' ').replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean)
+}
+
+function pdfToProseMirror(text: string): DocumentContent {
+  return wrap(
+    pdfTextToParagraphs(text).map(
+      (p) => ({ type: 'paragraph', content: [{ type: 'text', text: p }] }) as ProseMirrorNode
+    )
+  )
+}
+
 // --- Scrivener .scriv (best-effort) -----------------------------------------
 
 export interface ScrivNode {
@@ -231,6 +256,14 @@ export async function importFromFile(path: string): Promise<ImportResult> {
   }
   if (ext === '.txt') {
     return { title, content: textToProseMirror(await fs.readFile(path, 'utf8')) }
+  }
+  if (ext === '.pdf') {
+    const { text } = await pdfParse(await fs.readFile(path))
+    const content = pdfToProseMirror(text)
+    if (!content.doc.content?.some((n) => n.content?.length)) {
+      throw new Error('No selectable text found in this PDF — it may be scanned images.')
+    }
+    return { title, content }
   }
   throw new Error(`Unsupported file type: ${ext}`)
 }

@@ -34,7 +34,8 @@ import { diffLines } from '@shared/diff'
 import { classifySourceFile } from '@shared/sourcefile'
 import { imageSize, fitWidth } from '@shared/imagesize'
 import { trashItem, restoreItem, listTrash, mergeWithPrevious } from './services/binder'
-import { htmlToProseMirror, markdownToProseMirror, parseScrivener } from './services/importer'
+import { htmlToProseMirror, markdownToProseMirror, parseScrivener, pdfTextToParagraphs } from './services/importer'
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
 import {
   addSegment,
@@ -887,6 +888,17 @@ async function runChecks(): Promise<void> {
   assert(
     !!mdPara?.content?.some((r) => r.marks?.some((m) => m.type === 'bold')),
     'Markdown import parses bold'
+  )
+
+  // PDF import: text-extraction library loads, and wrapped lines join into
+  // paragraphs (page breaks / blank lines split them).
+  assert(typeof pdfParse === 'function', 'pdf-parse text extractor loads in the built main')
+  const pdfParas = pdfTextToParagraphs('First line\nstill first paragraph\n\nSecond paragraph\fThird page')
+  assert(
+    pdfParas.length === 3 &&
+      pdfParas[0] === 'First line still first paragraph' &&
+      pdfParas[2] === 'Third page',
+    'PDF text joins soft-wrapped lines and splits on blank lines / page breaks'
   )
 
   // Minimal Scrivener project fixture (best-effort import).

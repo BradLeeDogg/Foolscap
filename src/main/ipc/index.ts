@@ -550,7 +550,7 @@ export function registerIpc(): void {
       title: 'Import a document',
       properties: ['openFile'],
       filters: [
-        { name: 'Documents', extensions: ['docx', 'md', 'markdown', 'rtf', 'txt'] },
+        { name: 'Documents', extensions: ['pdf', 'docx', 'md', 'markdown', 'rtf', 'txt'] },
         { name: 'All Files', extensions: ['*'] }
       ]
     })
