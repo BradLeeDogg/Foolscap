@@ -18,6 +18,10 @@ w.__wpStore = useStore
 import { runCommand, type AppCommand } from './lib/commands'
 window.api.onMenuCommand((cmd) => runCommand(cmd as AppCommand))
 
+// Warm up the typewriter AudioContext on the first interaction.
+import { primeTypewriter } from './lib/typewriter'
+primeTypewriter()
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <App />

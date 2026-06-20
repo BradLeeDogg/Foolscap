@@ -27,6 +27,22 @@ function audio(): AudioContext | null {
   }
 }
 
+/**
+ * Create + resume the AudioContext on the first user interaction. Browsers/
+ * Electron may start it suspended; resuming inside a real gesture guarantees the
+ * first keystroke is audible. Safe to call repeatedly; listeners run once.
+ */
+export function primeTypewriter(): void {
+  if (typeof window === 'undefined') return
+  const unlock = (): void => {
+    audio()
+    window.removeEventListener('pointerdown', unlock)
+    window.removeEventListener('keydown', unlock)
+  }
+  window.addEventListener('pointerdown', unlock)
+  window.addEventListener('keydown', unlock)
+}
+
 /** A single mechanical keystroke. */
 export function playKeyClick(): void {
   const c = audio()

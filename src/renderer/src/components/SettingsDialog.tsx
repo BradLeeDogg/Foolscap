@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ProjectSettings } from '@shared/types'
 import { OVERLAYS_BY_TYPE, OVERLAY_LABELS, type StructureOverlay } from '@shared/api'
 import { useStore } from '../store/useStore'
+import { playKeyClick } from '../lib/typewriter'
 
 interface Props {
   onClose: () => void
@@ -113,9 +114,20 @@ export default function SettingsDialog({ onClose }: Props): JSX.Element {
             <input
               type="checkbox"
               checked={s.typewriterSound}
-              onChange={(e) => save({ typewriterSound: e.target.checked })}
+              onChange={(e) => {
+                void save({ typewriterSound: e.target.checked })
+                if (e.target.checked) playKeyClick() // instant confirmation + unlock audio
+              }}
             />
-            Typewriter keystroke sound
+            Typewriter keystroke sound <span className="muted">— plays a sample when enabled</span>
+          </label>
+          <label className="compile-check">
+            <input
+              type="checkbox"
+              checked={s.smartQuotes !== false}
+              onChange={(e) => save({ smartQuotes: e.target.checked })}
+            />
+            Smart quotes <span className="muted">— curly “quotes” and apostrophes as you type</span>
           </label>
           <div className="compile-fields">
             <label>

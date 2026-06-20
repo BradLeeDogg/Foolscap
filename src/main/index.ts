@@ -88,7 +88,8 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: true,
-      plugins: true // Chromium's built-in PDF viewer (Research viewer)
+      plugins: true, // Chromium's built-in PDF viewer (Research viewer)
+      autoplayPolicy: 'no-user-gesture-required' // let the typewriter AudioContext run
     }
   })
 
