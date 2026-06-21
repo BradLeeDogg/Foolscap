@@ -280,6 +280,9 @@ export interface CompileRequest {
   preset: CompilePreset
   meta: CompileMeta
   includeFactCheck: boolean
+  /** When set, a Works Cited / References / Bibliography is generated from these
+   *  sources (in the given style) and appended as the final, page-broken page. */
+  bibliography?: { style: 'mla' | 'apa' | 'chicago'; sources: Source[] } | null
 }
 
 export const DEFAULT_MANUSCRIPT: ManuscriptDefaults = {

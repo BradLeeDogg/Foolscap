@@ -20,6 +20,8 @@ export interface BodyLine {
   noIndent?: boolean
   /** Render the text in bold (e.g. an APA title or section label). */
   bold?: boolean
+  /** Hanging indent (bibliography entries). */
+  hanging?: boolean
 }
 
 /** A document seeded with one or more paragraphs of placeholder/body text. */
@@ -30,6 +32,7 @@ export function docFromParagraphs(paragraphs: Array<string | BodyLine>): Documen
     const attrs: Record<string, unknown> = {}
     if (line.align) attrs.align = line.align
     if (line.noIndent) attrs.noIndent = true
+    if (line.hanging) attrs.hanging = true
     if (Object.keys(attrs).length) node.attrs = attrs
     if (line.text) {
       node.content = [

@@ -527,18 +527,21 @@ function collegeEssayTemplate(): TemplateNode[] {
           body: [
             'Restate your thesis in fresh words, synthesize your main points, and close with why the argument matters. Don’t introduce new evidence here.'
           ]
+        },
+        {
+          type: 'document',
+          title: 'Works Cited',
+          synopsis: 'Add sources in the Sources panel — Compile builds this list for you (MLA, hanging indent). Or type your own here.',
+          body: [
+            { text: 'Works Cited', align: 'center', noIndent: true },
+            {
+              text: 'Add your sources in the Sources panel, then Compile → Bibliography → “from your sources” builds this page automatically. You can also type entries here.',
+              hanging: true
+            },
+            { text: 'Last, First. Title of Book. Publisher, Year.', hanging: true },
+            { text: 'Last, First. “Title of an Article.” Title of Journal, vol. #, no. #, Year, pp. ##–##.', hanging: true }
+          ]
         }
-      ]
-    },
-    {
-      type: 'document',
-      title: 'Works Cited',
-      synopsis: 'MLA entries — alphabetical, hanging indent (applied at compile).',
-      body: [
-        { text: 'Works Cited', align: 'center', noIndent: true },
-        { text: 'Last, First. Title of Book. Publisher, Year.', noIndent: true },
-        { text: 'Last, First. “Title of an Article.” Title of Journal, vol. #, no. #, Year, pp. ##–##.', noIndent: true },
-        { text: 'Last, First. “Title of a Web Page.” Title of Website, Day Month Year, URL.', noIndent: true }
       ]
     },
     { type: 'folder', title: 'Research', synopsis: 'Sources and notes.' }

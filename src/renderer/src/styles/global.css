@@ -449,6 +449,11 @@ fieldset.field {
 .manuscript .ProseMirror > p[style*='right'] {
   text-indent: 0;
 }
+/* Bibliography entries: hanging indent (first line flush, runover indented). */
+.manuscript .ProseMirror > p[data-hanging='true'] {
+  text-indent: -0.5in;
+  padding-left: 0.5in;
+}
 .manuscript .ProseMirror h1,
 .manuscript .ProseMirror h2,
 .manuscript .ProseMirror h3 {

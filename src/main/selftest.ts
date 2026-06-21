@@ -635,6 +635,38 @@ async function runChecks(): Promise<void> {
     bib.text.indexOf('Whole Book') < bib.text.indexOf('Great Article'),
     'bibliography is sorted by author surname (Adams before Smith)'
   )
+  assert(
+    bib.html.includes('<p data-hanging="true">') && !bib.html.includes('data-no-indent'),
+    'bibliography entries carry a hanging indent'
+  )
+
+  // Compile builds the Works Cited from the actual Sources (not a stored page),
+  // page-broken, with a hanging indent — across DOCX / HTML / plain text.
+  {
+    const bibReq = {
+      entries: [{ docId: 'align-export-test' }],
+      preset: COMPILE_PRESETS.mla,
+      meta: { title: 'A', author: '', contact: '', keyword: '', byline: '', dateline: '' },
+      includeFactCheck: false,
+      bibliography: { style: 'mla' as const, sources: [webSrc, bookSrc] }
+    }
+    const txt = await compileToText(paths.root, bibReq)
+    assert(
+      txt.includes('Works Cited') && txt.includes('Whole Book') && txt.includes('Great Article'),
+      'compile generates a Works Cited from the project sources'
+    )
+    const html = await compileToHtml(paths.root, bibReq)
+    const htmlNoSpace = html.replace(/\s+/g, '')
+    assert(
+      html.includes('class="works-cited"') &&
+        html.includes('class="wc-entry"') &&
+        htmlNoSpace.includes('text-indent:-0.5in') &&
+        htmlNoSpace.includes('page-break-before:always'),
+      'generated Works Cited compiles page-broken with a hanging indent'
+    )
+    const docx = await compileToDocxBuffer(paths.root, bibReq)
+    assert(docx.length > 0 && docx[0] === 0x50 && docx[1] === 0x4b, 'compile with a generated bibliography yields a valid .docx')
+  }
   {
     const { db: cdb } = projectService.requireCurrent()
     const made = createSource(cdb, { kind: 'note', title: 'Note A' })

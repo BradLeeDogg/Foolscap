@@ -36,6 +36,12 @@ export const BlockFormat = Extension.create({
             default: false,
             parseHTML: (el) => (el as HTMLElement).getAttribute('data-no-indent') === 'true',
             renderHTML: (attrs) => (attrs.noIndent ? { 'data-no-indent': 'true' } : {})
+          },
+          // Hanging indent for bibliography entries (Works Cited / References).
+          hanging: {
+            default: false,
+            parseHTML: (el) => (el as HTMLElement).getAttribute('data-hanging') === 'true',
+            renderHTML: (attrs) => (attrs.hanging ? { 'data-hanging': 'true' } : {})
           }
         }
       }

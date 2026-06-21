@@ -16,6 +16,7 @@ import {
 import archiver from 'archiver'
 import { randomUUID } from 'crypto'
 import type { CompilePreset, CompileRequest, ProseMirrorNode } from '@shared/types'
+import { buildBibliography } from '@shared/citations'
 import { SCREENPLAY_ELEMENTS, SCREENPLAY_STYLES, isScreenplayElement } from '@shared/screenplay'
 import { imageSize, fitWidth } from '@shared/imagesize'
 import { countWords, readDocument } from './documents'
@@ -101,11 +102,14 @@ function blockParagraphs(
             : align === 'justify' ? AlignmentType.JUSTIFIED
             : undefined
           const flush = node.attrs?.noIndent === true || align === 'center' || align === 'right'
+          const hangingIndent = node.attrs?.hanging === true
           out.push(
             new Paragraph({
               children: inlineRuns(node.content, fns),
               spacing: bodySpacing(preset),
-              indent: flush ? undefined : indent,
+              indent: hangingIndent
+                ? { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) }
+                : flush ? undefined : indent,
               ...(alignment ? { alignment } : {})
             })
           )
@@ -195,6 +199,49 @@ function center(text: string, preset: CompilePreset): Paragraph {
   })
 }
 
+// --- Generated bibliography (Works Cited / References / Bibliography) --------
+// Built from the project's Sources at compile time so it always reflects the
+// real source list — not a stale placeholder document.
+
+function unescapeEntities(s: string): string {
+  return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+}
+
+/** Bibliography entry HTML only ever contains <em> spans; split into docx runs. */
+function entryRuns(html: string): TextRun[] {
+  const runs: TextRun[] = []
+  for (const part of html.split(/(<em>[\s\S]*?<\/em>)/g)) {
+    if (!part) continue
+    const em = /^<em>([\s\S]*)<\/em>$/.exec(part)
+    runs.push(new TextRun({ text: unescapeEntities(em ? em[1]! : part), italics: !!em }))
+  }
+  return runs.length ? runs : [new TextRun('')]
+}
+
+/** The generated Works Cited as docx paragraphs (centered heading + hanging entries). */
+function bibliographyDocx(req: CompileRequest, preset: CompilePreset): Paragraph[] {
+  if (!req.bibliography) return []
+  const bib = buildBibliography(req.bibliography.sources, req.bibliography.style)
+  const out: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: bib.heading, bold: req.bibliography.style !== 'mla' })],
+      spacing: bodySpacing(preset),
+      pageBreakBefore: true
+    })
+  ]
+  for (const e of bib.entries) {
+    out.push(
+      new Paragraph({
+        children: entryRuns(e.html),
+        spacing: bodySpacing(preset),
+        indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) }
+      })
+    )
+  }
+  return out
+}
+
 function buildTitlePage(req: CompileRequest, roundedWords: number, preset: CompilePreset): Paragraph[] {
   const { meta } = req
   const paras: Paragraph[] = []
@@ -256,6 +303,7 @@ export async function compileToDocxBuffer(root: string, req: CompileRequest): Pr
       prevWasDoc = true
     }
   }
+  body.push(...bibliographyDocx(req, preset))
 
   const surname = meta.author.trim().split(/\s+/).pop() ?? meta.author
   const runningHeader = new Header({
@@ -348,7 +396,8 @@ function blockHtml(content: ProseMirrorNode[] | undefined, notes: string[]): str
           const styles: string[] = []
           if (align === 'center' || align === 'right' || align === 'justify' || align === 'left')
             styles.push(`text-align:${align}`)
-          if (node.attrs?.noIndent === true || align === 'center' || align === 'right')
+          if (node.attrs?.hanging === true) styles.push('margin-left:0.5in', 'text-indent:-0.5in')
+          else if (node.attrs?.noIndent === true || align === 'center' || align === 'right')
             styles.push('text-indent:0')
           const style = styles.length ? ` style="${styles.join(';')}"` : ''
           html += `<p${style}>${inlineHtml(node.content, notes)}</p>`
@@ -433,6 +482,15 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
     body += '</ol></div>'
   }
 
+  if (req.bibliography) {
+    const bib = buildBibliography(req.bibliography.sources, req.bibliography.style)
+    const head = req.bibliography.style === 'mla' ? esc(bib.heading) : `<strong>${esc(bib.heading)}</strong>`
+    body +=
+      `<div class="works-cited"><p class="wc-head">${head}</p>` +
+      bib.entries.map((e) => `<p class="wc-entry">${e.html}</p>`).join('') +
+      '</div>'
+  }
+
   const indent = preset.firstLineIndentInches
   const spCss = SCREENPLAY_ELEMENTS.map((k) => {
     const s = SCREENPLAY_STYLES[k]
@@ -461,6 +519,9 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
     figure.fig img { max-width: 100%; height: auto; }
     figure.fig figcaption { font-size: 0.85em; color: #555; margin-top: 0.3em; text-indent: 0; }
     .endnotes { page-break-before: always; }
+    .works-cited { page-break-before: always; }
+    .works-cited .wc-head { text-indent: 0; text-align: center; }
+    .works-cited .wc-entry { text-indent: -0.5in; margin-left: 0.5in; }
   `
   return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${body}</body></html>`
 }
@@ -586,6 +647,11 @@ async function assemblePlain(root: string, req: CompileRequest, md: boolean): Pr
       out += (md ? `[^${i + 1}]: ${n}` : `[${i + 1}] ${n}`) + '\n'
     })
   }
+  if (req.bibliography) {
+    const bib = buildBibliography(req.bibliography.sources, req.bibliography.style)
+    out += '\n\n' + (md ? `# ${bib.heading}` : bib.heading) + '\n\n'
+    out += bib.entries.map((e) => e.text).join('\n') + '\n'
+  }
   return out.trimEnd() + '\n'
 }
 
@@ -664,6 +730,13 @@ export async function compileToEpubBuffer(root: string, req: CompileRequest): Pr
     if (e.docId && !(e.docId in contents)) contents[e.docId] = (await readDocument(root, e.docId)) as never
   }
   const chapters = buildChapters(req, contents)
+  if (req.bibliography) {
+    const bib = buildBibliography(req.bibliography.sources, req.bibliography.style)
+    chapters.push({
+      title: bib.heading,
+      xhtml: bib.entries.map((e) => `<p class="wc-entry">${e.html}</p>`).join('')
+    })
+  }
   const uuid = randomUUID()
   const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
   const title = esc(meta.title || 'Untitled')
@@ -704,7 +777,7 @@ export async function compileToEpubBuffer(root: string, req: CompileRequest): Pr
     `<dc:identifier id="bookid">urn:uuid:${uuid}</dc:identifier><dc:title>${title}</dc:title><dc:creator>${author}</dc:creator><dc:language>en-US</dc:language>` +
     `<meta property="dcterms:modified">${modified}</meta></metadata><manifest>${manifestItems}</manifest><spine toc="ncx">${spine}</spine></package>`
 
-  const css = `body{font-family:'${req.preset.font}',Georgia,serif;line-height:${req.preset.lineSpacing};} h1,h2,h3{font-weight:600;} p{margin:0;text-indent:${req.preset.firstLineIndentInches}in;} p:first-of-type{text-indent:0;} .title-page{text-align:center;margin-top:25%;} .title-page .author{margin-top:2em;font-style:italic;} .notes{font-size:0.9em;}`
+  const css = `body{font-family:'${req.preset.font}',Georgia,serif;line-height:${req.preset.lineSpacing};} h1,h2,h3{font-weight:600;} p{margin:0;text-indent:${req.preset.firstLineIndentInches}in;} p:first-of-type{text-indent:0;} .title-page{text-align:center;margin-top:25%;} .title-page .author{margin-top:2em;font-style:italic;} .notes{font-size:0.9em;} .wc-entry{margin-left:2em;text-indent:-2em;}`
   const container = `<?xml version="1.0"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`
 
   return zipToBuffer((a) => {

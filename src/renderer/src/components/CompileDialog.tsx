@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
-import type { CompileEntry, CompilePreset, CompilePresetId } from '@shared/types'
+import { useEffect, useMemo, useState } from 'react'
+import type { CompileEntry, CompilePreset, CompilePresetId, Source } from '@shared/types'
 import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
+import { BIBLIOGRAPHY_HEADINGS } from '@shared/citations'
 import { useStore } from '../store/useStore'
 import { childrenOf, descendantDocuments } from '../lib/tree'
 
@@ -10,6 +11,12 @@ interface Props {
 
 // The citation page (Works Cited / References / Bibliography) — matched by title.
 const CITATION_TITLES = new Set(['works cited', 'references', 'bibliography'])
+
+type BibMode = 'sources' | 'document' | 'none'
+
+/** The citation style implied by a compile preset (other presets default to MLA). */
+const styleForPreset = (id: CompilePresetId): 'mla' | 'apa' | 'chicago' =>
+  id === 'apa' ? 'apa' : id === 'chicago' ? 'chicago' : 'mla'
 
 function buildEntries(
   tree: Parameters<typeof childrenOf>[0],
@@ -58,27 +65,55 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
   }
   const patch = (p: Partial<CompilePreset>): void => setPreset((cur) => ({ ...cur, ...p }))
 
-  // The Works Cited / References / Bibliography page usually lives outside the
-  // body folder; append it as a final, standalone page so it actually compiles.
+  // The bibliography is built from the writer's actual Sources by default, so it
+  // always reflects the real source list — never a stale placeholder page.
+  const bibStyle = styleForPreset(presetId)
+  const [sources, setSources] = useState<Source[]>([])
+  const [bibMode, setBibMode] = useState<BibMode>('none')
+
   const citationDoc = useMemo(
     () => tree.find((t) => t.type === 'document' && CITATION_TITLES.has(t.title.trim().toLowerCase())),
     [tree]
   )
-  const [appendCitations, setAppendCitations] = useState(true)
+  const citationDocIds = useMemo(
+    () =>
+      new Set(
+        tree
+          .filter((t) => t.type === 'document' && CITATION_TITLES.has(t.title.trim().toLowerCase()))
+          .map((t) => t.id)
+      ),
+    [tree]
+  )
+
+  useEffect(() => {
+    void window.api.source.list().then((list) => {
+      setSources(list)
+      setBibMode(list.length ? 'sources' : citationDoc ? 'document' : 'none')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const entries = useMemo(() => {
-    const base = buildEntries(tree, rootId)
-    if (appendCitations && citationDoc && !base.some((e) => e.docId === citationDoc.id)) {
-      base.push({ docId: citationDoc.id, pageBreak: true })
+    let base = buildEntries(tree, rootId)
+    if (bibMode === 'document' && citationDoc) {
+      // Use the stored citation page, page-broken, wherever it sits in the binder.
+      if (!base.some((e) => e.docId === citationDoc.id)) base.push({ docId: citationDoc.id, pageBreak: true })
+      else base = base.map((e) => (e.docId === citationDoc.id ? { ...e, pageBreak: true } : e))
+    } else {
+      // 'sources' / 'none': drop any stored citation page (the generated one, if
+      // any, is appended by Compile) so it never duplicates or goes stale.
+      base = base.filter((e) => !e.docId || !citationDocIds.has(e.docId))
     }
     return base
-  }, [tree, rootId, appendCitations, citationDoc])
+  }, [tree, rootId, bibMode, citationDoc, citationDocIds])
   const docCount = entries.filter((e) => e.docId).length
 
   const request = (): Parameters<typeof window.api.compile.docx>[0] => ({
     entries,
     preset,
     meta: { title, author, contact, keyword, byline, dateline },
-    includeFactCheck
+    includeFactCheck,
+    bibliography: bibMode === 'sources' && sources.length ? { style: bibStyle, sources } : null
   })
 
   const exportDocx = async (): Promise<void> => {
@@ -277,15 +312,20 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
               />
               Export fact-check packet alongside
             </label>
-            {citationDoc && (
-              <label className="compile-check">
-                <input
-                  type="checkbox"
-                  checked={appendCitations}
-                  onChange={(e) => setAppendCitations(e.target.checked)}
-                />
-                Append “{citationDoc.title}” as a final page
-              </label>
+            <label className="compile-stack">
+              Bibliography (final page)
+              <select value={bibMode} onChange={(e) => setBibMode(e.target.value as BibMode)}>
+                <option value="sources" disabled={!sources.length}>
+                  {BIBLIOGRAPHY_HEADINGS[bibStyle]} from your sources ({sources.length})
+                </option>
+                {citationDoc && <option value="document">Use the “{citationDoc.title}” page as written</option>}
+                <option value="none">Don’t include</option>
+              </select>
+            </label>
+            {bibMode === 'sources' && (
+              <p className="muted compile-count">
+                Generated in {bibStyle.toUpperCase()} — alphabetized, hanging indent.
+              </p>
             )}
           </section>
         </div>

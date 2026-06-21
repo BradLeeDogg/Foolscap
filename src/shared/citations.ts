@@ -183,9 +183,12 @@ export function buildBibliography(sources: Source[], style: CitationStyle): Bibl
   // Center the heading (bold for APA/Chicago, matching the style); entries sit
   // flush-left. The align/no-indent hints survive insertion into the editor.
   const headingInner = style === 'mla' ? esc(heading) : `<strong>${esc(heading)}</strong>`
+  // Entries get a hanging indent (first line flush, runover lines indented) —
+  // the standard for MLA/APA/Chicago lists. The hint survives into the editor
+  // and through to Compile.
   const html =
     `<p style="text-align:center">${headingInner}</p>` +
-    entries.map((e) => `<p data-no-indent="true">${e.html}</p>`).join('')
+    entries.map((e) => `<p data-hanging="true">${e.html}</p>`).join('')
   const text = heading + '\n\n' + entries.map((e) => e.text).join('\n')
   return { heading, entries, html, text }
 }
