@@ -142,6 +142,11 @@ function createWindow(): BrowserWindow {
   return window
 }
 
+// The per-window webPreferences.autoplayPolicy doesn't reliably reach the Web
+// Audio engine in Electron; the command-line switch (set before ready) does —
+// so the typewriter keystroke sounds can play without a prior gesture.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.foolscap.app')
 

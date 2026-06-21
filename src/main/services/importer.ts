@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs'
-import { basename, extname, join } from 'path'
+import { basename, dirname, extname, join } from 'path'
 import { JSDOM } from 'jsdom'
 import mammoth from 'mammoth'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
@@ -284,7 +284,11 @@ async function readFirst(paths: string[]): Promise<string | null> {
  * structure + titles + synopses + document *text* are imported; rich
  * formatting, labels/keywords, snapshots, and images are not (see docs).
  */
-export async function parseScrivener(scrivDir: string): Promise<ScrivNode[]> {
+/** Parse a Scrivener project — given either the `.scrivx` file or the `.scriv`
+ *  folder that contains it (Windows projects are plain folders). */
+export async function parseScrivener(scrivPath: string): Promise<ScrivNode[]> {
+  const stat = await fs.stat(scrivPath).catch(() => null)
+  const scrivDir = stat?.isDirectory() ? scrivPath : dirname(scrivPath)
   const entries = await fs.readdir(scrivDir)
   const scrivx = entries.find((e) => e.endsWith('.scrivx'))
   if (!scrivx) throw new Error('No .scrivx file found — is this a Scrivener project folder?')

@@ -1002,6 +1002,12 @@ async function runChecks(): Promise<void> {
     scrivChild?.type === 'document' && /Hello from Scrivener/.test(extractPlainText(scrivChild.content!)),
     'scrivener document text imported'
   )
+  // Importing by the .scrivx file path (what the picker now returns) works too.
+  const scrivViaFile = await parseScrivener(join(scrivDir, 'Demo.scrivx'))
+  assert(
+    scrivViaFile.length === 1 && scrivViaFile[0]!.title === 'Manuscript' && scrivViaFile[0]!.children?.length === 1,
+    'scrivener imports from a .scrivx file path (not just the folder)'
+  )
 
   const savedPath = res.meta.path
   await projectService.close()

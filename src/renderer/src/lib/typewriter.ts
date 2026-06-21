@@ -49,7 +49,7 @@ export function playKeyClick(): void {
   if (!c || !noise) return
   const t = c.currentTime
   const out = c.createGain()
-  out.gain.value = 0.6
+  out.gain.value = 0.9
   out.connect(c.destination)
 
   // Typebar strike: a short, bright noise transient with a fast attack.
@@ -86,7 +86,7 @@ export function playReturn(): void {
   if (!c) return
   const t = c.currentTime
   const out = c.createGain()
-  out.gain.value = 0.32
+  out.gain.value = 0.5
   out.connect(c.destination)
   const partials: Array<[number, number]> = [
     [1380, 0.13],

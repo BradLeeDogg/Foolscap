@@ -134,10 +134,14 @@ export default function Binder(): JSX.Element {
   }
 
   const importScriv = async (): Promise<void> => {
-    const res = await window.api.importer.scrivener(newItemParent())
-    if (res) {
-      setTree(res.tree)
-      select(res.rootId)
+    try {
+      const res = await window.api.importer.scrivener(newItemParent())
+      if (res) {
+        setTree(res.tree)
+        select(res.rootId)
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not import that Scrivener project.')
     }
   }
 
@@ -267,7 +271,7 @@ export default function Binder(): JSX.Element {
         <button title="Import PDF / DOCX / Markdown / RTF / TXT as an editable document" onClick={importDoc}>
           ⤓
         </button>
-        <button title="Import Scrivener project (.scriv)" onClick={importScriv}>
+        <button title="Import Scrivener project (.scrivx)" onClick={importScriv}>
           ⇲
         </button>
         <span className="spacer" />

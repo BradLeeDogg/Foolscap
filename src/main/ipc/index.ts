@@ -591,15 +591,19 @@ export function registerIpc(): void {
   ipcMain.handle('import:scrivener', async (_e, parentId: string | null) => {
     const { db, paths } = projectService.requireCurrent()
     const res = await dialog.showOpenDialog(focusedWindow()!, {
-      title: 'Select a Scrivener (.scriv) project folder',
-      properties: ['openDirectory']
+      title: 'Select a Scrivener project file (.scrivx)',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Scrivener project', extensions: ['scrivx'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
     })
     if (res.canceled || !res.filePaths[0]) return null
-    const dir = res.filePaths[0]
-    const nodes = await parseScrivener(dir)
+    const picked = res.filePaths[0]
+    const nodes = await parseScrivener(picked)
     const container = binder.createItemFull(db, {
       type: 'folder',
-      title: `Imported — ${basename(dir).replace(/\.scriv$/i, '')}`,
+      title: `Imported — ${basename(picked).replace(/\.scrivx?$/i, '')}`,
       parentId
     })
     let imported = 0
