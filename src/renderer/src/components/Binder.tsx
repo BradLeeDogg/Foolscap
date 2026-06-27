@@ -449,6 +449,15 @@ function BinderRow(props: RowProps): JSX.Element {
   })
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Focus (and pre-select) the name field whenever a row enters rename mode, so
+  // the writer can immediately type over the placeholder.
+  useEffect(() => {
+    if (renaming && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [renaming])
+
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -471,7 +480,7 @@ function BinderRow(props: RowProps): JSX.Element {
       tabIndex={selected ? 0 : -1}
       onClick={props.onSelect}
       onContextMenu={props.onContextMenu}
-      {...listeners}
+      {...(renaming ? {} : listeners)}
     >
       {node.type === 'folder' ? (
         <button
@@ -494,6 +503,7 @@ function BinderRow(props: RowProps): JSX.Element {
           className="rename-input"
           defaultValue={node.title}
           onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           onBlur={(e) => props.onCommitRename(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') props.onCommitRename((e.target as HTMLInputElement).value)
