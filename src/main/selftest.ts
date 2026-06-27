@@ -35,6 +35,7 @@ import { classifySourceFile } from '@shared/sourcefile'
 import { imageSize, fitWidth } from '@shared/imagesize'
 import { trashItem, restoreItem, listTrash, mergeWithPrevious } from './services/binder'
 import { classifyPdfBlocks, htmlToProseMirror, markdownToProseMirror, parseScrivener, pdfTextToParagraphs } from './services/importer'
+import { getCorkLayout, setCorkRect } from './services/corkboard'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { exportAnnotatedPdf, getAnnotations, saveAnnotations } from './services/pdfannotations'
 import { getTemplate, STRUCTURE_BEATS } from './services/templates'
@@ -1008,6 +1009,17 @@ async function runChecks(): Promise<void> {
     scrivViaFile.length === 1 && scrivViaFile[0]!.title === 'Manuscript' && scrivViaFile[0]!.children?.length === 1,
     'scrivener imports from a .scrivx file path (not just the folder)'
   )
+
+  // Corkboard freeform layout: a card's position/size persists and clamps.
+  {
+    const { db: ckdb } = projectService.requireCurrent()
+    const saved = setCorkRect(ckdb, 'card-xyz', { x: -10, y: 40, w: 50, h: 900 })
+    assert(
+      saved['card-xyz']?.x === 0 && saved['card-xyz']?.w === 120 && saved['card-xyz']?.h === 900,
+      'corkboard card rect persists and clamps to sane minimums'
+    )
+    assert(getCorkLayout(ckdb)['card-xyz']?.y === 40, 'corkboard layout reloads from the db')
+  }
 
   const savedPath = res.meta.path
   await projectService.close()

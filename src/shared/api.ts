@@ -24,6 +24,14 @@ import type {
 } from './types'
 import type { PdfAnnotations } from './pdfannot'
 
+/** A corkboard card's freeform position + size (pixels). */
+export interface CardRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface ManualSourceInput {
   kind: SourceKind
   title: string
@@ -208,6 +216,12 @@ export interface FoolscapAPI {
     mergeWithPrevious(id: string): Promise<{ tree: BinderItem[]; survivingId: string } | null>
     move(input: BinderMoveInput): Promise<BinderItem[]>
     applyOverlay(overlay: StructureOverlay): Promise<{ folderId: string; tree: BinderItem[] }>
+  }
+  corkboard: {
+    /** Per-card freeform positions + sizes, keyed by binder item id. */
+    getLayout(): Promise<Record<string, CardRect>>
+    /** Save one card's position + size; returns the full updated layout. */
+    setRect(id: string, rect: CardRect): Promise<Record<string, CardRect>>
   }
   document: {
     read(id: string): Promise<DocumentContent | null>

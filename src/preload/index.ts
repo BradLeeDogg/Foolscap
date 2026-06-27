@@ -40,6 +40,10 @@ const api: FoolscapAPI = {
     move: (input) => ipcRenderer.invoke('binder:move', input),
     applyOverlay: (overlay) => ipcRenderer.invoke('binder:applyOverlay', overlay)
   },
+  corkboard: {
+    getLayout: () => ipcRenderer.invoke('corkboard:getLayout'),
+    setRect: (id, rect) => ipcRenderer.invoke('corkboard:setRect', id, rect)
+  },
   document: {
     read: (id) => ipcRenderer.invoke('document:read', id),
     write: (id, content) => ipcRenderer.invoke('document:write', id, content)

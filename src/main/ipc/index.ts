@@ -12,6 +12,8 @@ import { OVERLAY_LABELS } from '@shared/api'
 import type { DocumentContent, ProjectSettings } from '@shared/types'
 import { projectService } from '../services/project'
 import * as binder from '../services/binder'
+import * as corkboard from '../services/corkboard'
+import type { CardRect } from '../services/corkboard'
 import { STRUCTURE_BEATS } from '../services/templates'
 import { countWords, emptyDoc, readDocument, writeDocument } from '../services/documents'
 import { documentFile, snapshotFile } from '../services/paths'
@@ -113,6 +115,15 @@ export function registerIpc(): void {
   ipcMain.handle('binder:list', () => {
     const { db } = projectService.requireCurrent()
     return binder.listBinder(db)
+  })
+
+  ipcMain.handle('corkboard:getLayout', () => {
+    const { db } = projectService.requireCurrent()
+    return corkboard.getCorkLayout(db)
+  })
+  ipcMain.handle('corkboard:setRect', (_e, id: string, rect: CardRect) => {
+    const { db } = projectService.requireCurrent()
+    return corkboard.setCorkRect(db, id, rect)
   })
 
   ipcMain.handle('binder:create', async (_e, input: BinderCreateInput) => {
