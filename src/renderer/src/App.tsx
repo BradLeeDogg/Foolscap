@@ -13,7 +13,10 @@ export default function App(): JSX.Element {
   // selection in the last-focused editor (same path as side-panel inserts).
   useEffect(() => {
     return window.api.onThesaurusReplace((synonym) => {
-      useStore.getState().inserter?.(synonym)
+      // inserter parses its argument as HTML; escape so a synonym with &/<>
+      // (rare WordNet entries) inserts as literal text.
+      const text = synonym.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      useStore.getState().inserter?.(text)
     })
   }, [])
   return hasProject ? <Workspace /> : <Launcher />
