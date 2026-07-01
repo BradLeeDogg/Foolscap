@@ -1,18 +1,26 @@
-import { existsSync, readFileSync } from 'fs'
+import { existsSync } from 'fs'
+import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { app } from 'electron'
 import type { ThesaurusSense } from '@shared/api'
 
 /**
  * Offline thesaurus backed by the WordNet-derived data file
- * (resources/thesaurus.txt, built at package time). The file is one line per
- * word — "word<TAB>sensesJSON" — so we keep compact strings in memory and parse
- * only the looked-up entry. Loaded lazily on first use.
+ * (resources/thesaurus.txt, built at package time). One line per word —
+ * "word<TAB>sensesJSON" — so we keep compact strings in memory and parse only
+ * the looked-up entry.
+ *
+ * IMPORTANT: the file is loaded ASYNCHRONOUSLY, in yielding chunks. Keyboard
+ * input in Electron is routed through the main process, so a synchronous read
+ * of a ~16 MB file here (worsened by AV scanning on Windows) would freeze
+ * typing app-wide. lookup() therefore never blocks — it returns nothing until
+ * the data has finished loading in the background.
  */
 
 type RawSense = [string, string, string[], string[]] // [pos, def, syns, ants]
 
 let index: Map<string, string> | null = null
+let loading: Promise<Map<string, string>> | null = null
 
 function dataPath(): string | null {
   // Packaged (extraResources), dev build, and headless test (cwd) — first hit wins.
@@ -24,26 +32,40 @@ function dataPath(): string | null {
   return candidates.find((p) => existsSync(p)) ?? null
 }
 
-function ensureLoaded(): Map<string, string> {
-  if (index) return index
-  index = new Map()
+async function build(): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
   try {
     const p = dataPath()
-    if (!p) return index
-    const text = readFileSync(p, 'utf8')
-    for (const line of text.split('\n')) {
-      const tab = line.indexOf('\t')
-      if (tab > 0) index.set(line.slice(0, tab), line.slice(tab + 1))
+    if (p) {
+      const text = await readFile(p, 'utf8')
+      let start = 0
+      let count = 0
+      while (start < text.length) {
+        let nl = text.indexOf('\n', start)
+        if (nl === -1) nl = text.length
+        const tab = text.indexOf('\t', start)
+        if (tab > start && tab < nl) map.set(text.slice(start, tab), text.slice(tab + 1, nl))
+        start = nl + 1
+        // Yield to the event loop periodically so input routing never stalls.
+        if ((++count & 8191) === 0) await new Promise<void>((r) => setImmediate(r))
+      }
     }
   } catch {
     /* missing/unreadable data → empty thesaurus */
   }
-  return index
+  return map
 }
 
-/** Load the data ahead of first use so the initial lookup isn't slow. */
+/** Load the data off the main thread (async I/O + chunked parse). Idempotent. */
+export async function load(): Promise<void> {
+  if (index) return
+  if (!loading) loading = build().then((m) => (index = m))
+  await loading
+}
+
+/** Kick off loading ahead of first use (fire-and-forget; never blocks). */
 export function warm(): void {
-  ensureLoaded()
+  void load()
 }
 
 /** Best-effort base forms when an exact entry isn't found (plurals, -ed, -ing). */
@@ -57,15 +79,18 @@ function morphedForms(w: string): string[] {
   return out
 }
 
-/** Synonym/antonym senses for a word (case-insensitive; empty if none). */
+/** Synonym/antonym senses for a word. Non-blocking: empty until data loads. */
 export function lookup(word: string): ThesaurusSense[] {
-  const map = ensureLoaded()
+  if (!index) {
+    void load()
+    return []
+  }
   const w = word.trim().toLowerCase()
   if (!w) return []
-  let raw = map.get(w)
+  let raw = index.get(w)
   if (!raw) {
     for (const form of morphedForms(w)) {
-      raw = map.get(form)
+      raw = index.get(form)
       if (raw) break
     }
   }
@@ -75,17 +100,4 @@ export function lookup(word: string): ThesaurusSense[] {
   } catch {
     return []
   }
-}
-
-/** A de-duplicated, word-excluding synonym list across senses (for quick menus). */
-export function flatSynonyms(word: string, limit = 12): string[] {
-  const self = word.trim().toLowerCase()
-  const out: string[] = []
-  for (const sense of lookup(word)) {
-    for (const s of sense.syns) {
-      if (s !== self && !out.includes(s)) out.push(s)
-      if (out.length >= limit) return out
-    }
-  }
-  return out
 }

@@ -1024,6 +1024,7 @@ async function runChecks(): Promise<void> {
 
   // Offline thesaurus (WordNet): synonyms, antonyms, case + plural fallback.
   {
+    await thesaurus.load() // data loads asynchronously; wait before asserting
     const q = thesaurus.lookup('quickly')
     assert(
       q.some((s) => s.syns.includes('rapidly')) && q.some((s) => s.ants.includes('slowly')),
