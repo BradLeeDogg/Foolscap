@@ -43,6 +43,24 @@ export async function createSnapshot(
   return { id, itemId, name, wordCount, createdAt }
 }
 
+/**
+ * Ctrl+S semantics: snapshot only when the document actually differs from its
+ * latest snapshot, so reflexive saving never piles up duplicates.
+ */
+export async function createSnapshotIfChanged(
+  db: DB,
+  root: string,
+  itemId: string,
+  name: string
+): Promise<Snapshot | null> {
+  const latest = listSnapshots(db, itemId)[0]
+  if (latest) {
+    const [cur, snap] = await Promise.all([readDocument(root, itemId), readSnapshot(root, latest.id)])
+    if (cur && snap && JSON.stringify(cur.doc) === JSON.stringify(snap.doc)) return null
+  }
+  return createSnapshot(db, root, itemId, name)
+}
+
 export function listSnapshots(db: DB, itemId: string): Snapshot[] {
   const rows = db
     .prepare('SELECT * FROM snapshots WHERE item_id = ? ORDER BY created_at DESC')

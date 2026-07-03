@@ -18,6 +18,9 @@ function buildAppMenu(win: BrowserWindow): void {
         { label: 'New Document', accelerator: 'CmdOrCtrl+N', click: send('new-doc') },
         { label: 'New Folder', accelerator: 'CmdOrCtrl+Shift+N', click: send('new-folder') },
         { type: 'separator' },
+        // Autosave is continuous; Ctrl+S acknowledges it and takes a snapshot.
+        { label: 'Save Now (snapshot)', accelerator: 'CmdOrCtrl+S', click: send('save-now') },
+        { type: 'separator' },
         { label: 'Compile…', accelerator: 'CmdOrCtrl+E', click: send('compile') },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' }
@@ -56,7 +59,11 @@ function buildAppMenu(win: BrowserWindow): void {
         { label: 'Corkboard', accelerator: 'CmdOrCtrl+2', click: send('view-corkboard') },
         { label: 'Outliner', accelerator: 'CmdOrCtrl+3', click: send('view-outliner') },
         { type: 'separator' },
+        { label: 'Inspector', accelerator: 'CmdOrCtrl+Shift+I', click: send('panel-inspector') },
+        { label: 'Sources', accelerator: 'CmdOrCtrl+Shift+R', click: send('panel-sources') },
+        { label: 'Fact-check', accelerator: 'CmdOrCtrl+Shift+F', click: send('panel-factcheck') },
         { label: 'Writing Analysis', click: send('panel-analysis') },
+        { type: 'separator' },
         { label: 'Split View', accelerator: 'CmdOrCtrl+\\', click: send('split-view') },
         { label: 'Composition Mode', accelerator: 'CmdOrCtrl+Shift+Return', click: send('compose') },
         { type: 'separator' },

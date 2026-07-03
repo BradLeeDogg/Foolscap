@@ -37,7 +37,8 @@ const api: FoolscapAPI = {
     open: (path) => ipcRenderer.invoke('project:open', path),
     close: () => ipcRenderer.invoke('project:close'),
     getMeta: () => ipcRenderer.invoke('project:getMeta'),
-    updateSettings: (patch) => ipcRenderer.invoke('project:updateSettings', patch)
+    updateSettings: (patch) => ipcRenderer.invoke('project:updateSettings', patch),
+    setLastSelected: (id) => ipcRenderer.invoke('project:setLastSelected', id)
   },
   binder: {
     list: () => ipcRenderer.invoke('binder:list'),
@@ -67,6 +68,7 @@ const api: FoolscapAPI = {
   },
   snapshot: {
     create: (itemId, name) => ipcRenderer.invoke('snapshot:create', itemId, name),
+    createIfChanged: (itemId, name) => ipcRenderer.invoke('snapshot:createIfChanged', itemId, name),
     list: (itemId) => ipcRenderer.invoke('snapshot:list', itemId),
     read: (snapshotId) => ipcRenderer.invoke('snapshot:read', snapshotId),
     restore: (snapshotId) => ipcRenderer.invoke('snapshot:restore', snapshotId),

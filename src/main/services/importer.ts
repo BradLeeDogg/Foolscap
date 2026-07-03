@@ -336,9 +336,36 @@ export async function parseScrivener(scrivPath: string): Promise<ScrivNode[]> {
 
 // --- dispatch ---------------------------------------------------------------
 
+/** What survived an import — and, honestly, what didn't. */
+export interface ImportStats {
+  paragraphs: number
+  headings: number
+  footnotesFlattened: number
+  imagesDropped: number
+}
+
 export interface ImportResult {
   title: string
   content: DocumentContent
+  stats?: ImportStats
+}
+
+function countStats(content: DocumentContent, html: string): ImportStats {
+  let paragraphs = 0
+  let headings = 0
+  const walk = (nodes: typeof content.doc.content): void => {
+    for (const n of nodes ?? []) {
+      if (n.type === 'paragraph') paragraphs++
+      else if (n.type === 'heading') headings++
+      if (n.content) walk(n.content as never)
+    }
+  }
+  walk(content.doc.content)
+  // mammoth emits footnotes as an end-of-document list with #footnote- anchors;
+  // they survive only as flattened text. Images are dropped by the converter.
+  const footnotesFlattened = (html.match(/id="footnote-/g) ?? []).length
+  const imagesDropped = (html.match(/<img[\s>]/g) ?? []).length
+  return { paragraphs, headings, footnotesFlattened, imagesDropped }
 }
 
 /** Convert a supported file into canonical document content + a title. */
@@ -347,7 +374,8 @@ export async function importFromFile(path: string): Promise<ImportResult> {
   const title = basename(path, ext)
   if (ext === '.docx') {
     const { value } = await mammoth.convertToHtml({ path })
-    return { title, content: htmlToProseMirror(value) }
+    const content = htmlToProseMirror(value)
+    return { title, content, stats: countStats(content, value) }
   }
   if (ext === '.md' || ext === '.markdown') {
     return { title, content: markdownToProseMirror(await fs.readFile(path, 'utf8')) }

@@ -271,6 +271,8 @@ export interface CompileMeta {
 export interface CompileEntry {
   heading?: string
   docId?: string
+  /** Binder title of the document (lets compile recognize special pages). */
+  title?: string
   /** Start this entry on a fresh page (e.g. a Works Cited / References page). */
   pageBreak?: boolean
 }

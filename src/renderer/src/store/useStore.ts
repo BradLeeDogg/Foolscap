@@ -153,11 +153,16 @@ export const useStore = create<AppState>((set) => ({
 
   openResult: (result) => {
     clearUndo() // structural undo must not cross project boundaries
+    // Resume where the writer was; fall back to the first document.
+    const resume =
+      result.lastSelectedId && result.tree.some((t) => t.id === result.lastSelectedId)
+        ? result.lastSelectedId
+        : firstDocument(result.tree)
     set({
       meta: result.meta,
       tree: result.tree,
       labels: result.labels,
-      selectedId: firstDocument(result.tree),
+      selectedId: resume,
       saveState: 'idle',
       lastSavedAt: null,
       docWordCount: 0,
@@ -184,7 +189,10 @@ export const useStore = create<AppState>((set) => ({
     }),
   setTree: (tree) => set({ tree }),
   setMeta: (meta) => set({ meta }),
-  select: (id) => set({ selectedId: id, selectionWordCount: 0 }),
+  select: (id) => {
+    set({ selectedId: id, selectionWordCount: 0 })
+    void window.api.project.setLastSelected(id).catch(() => undefined)
+  },
   setSaveState: (state, at) => set(at ? { saveState: state, lastSavedAt: at } : { saveState: state }),
   setDocWordCount: (n) => set({ docWordCount: n }),
   setSelectionWordCount: (n) => set({ selectionWordCount: n }),

@@ -50,18 +50,58 @@ import type {
 } from '@shared/types'
 import type { ManualSourceInput } from '@shared/api'
 
+/** The packet reads as a checker's briefing: header, counts, outstanding first. */
 function factCheckPacketText(db: ReturnType<typeof projectService.requireCurrent>['db']): string {
   const titleOf = new Map(binder.listBinder(db).map((i) => [i.id, i.title]))
-  const lines = ['FACT-CHECK PACKET', '='.repeat(40), '']
-  for (const { docId, claims } of factcheck.buildPacket(db)) {
+  const meta = projectService.getMeta()
+  const counts = factcheck.claimCounts(db)
+  const packet = factcheck.buildPacket(db)
+  const quoteChecks = packet.reduce(
+    (n, d) => n + d.claims.filter((c) => c.needsQuoteCheck).length,
+    0
+  )
+
+  const sourceLine = (s: (typeof packet)[number]['claims'][number]['sources'][number]): string => {
+    const bits = [s.title]
+    if (s.author) bits.push(s.author)
+    if (s.year) bits.push(s.year)
+    let line = `      - ${bits.join(' · ')}`
+    if (s.url) line += ` (${s.url})`
+    if (s.locator) line += ` @ ${s.locator}`
+    if (s.notes) line += `\n        note: ${s.notes.replace(/\s+/g, ' ').slice(0, 200)}`
+    return line
+  }
+  const claimLines = (c: (typeof packet)[number]['claims'][number], withDoc = false): string[] => {
+    const out = [
+      `  [${c.status}${c.needsQuoteCheck ? ', CHECK VS AUDIO' : ''}] ${c.text}` +
+        (withDoc ? `  — in “${titleOf.get(c.docId) ?? c.docId}”` : '')
+    ]
+    for (const s of c.sources) out.push(sourceLine(s))
+    if (c.sources.length === 0) out.push('      - (no source linked)')
+    return out
+  }
+
+  const lines = [
+    'FACT-CHECK PACKET',
+    '='.repeat(40),
+    `Project:  ${meta?.title ?? '—'}`,
+    `Exported: ${new Date().toLocaleString()}`,
+    `Claims:   ${counts.total} total — ${counts.verified} verified · ${counts.needsSourcing} need sourcing · ${counts.disputed} disputed`,
+    `Quote-vs-audio checks flagged: ${quoteChecks}`,
+    ''
+  ]
+
+  const outstanding = packet.flatMap((d) => d.claims).filter((c) => c.status !== 'verified')
+  if (outstanding.length) {
+    lines.push(`OUTSTANDING (${outstanding.length}) — resolve these first`, '-'.repeat(40))
+    for (const c of outstanding) lines.push(...claimLines(c, true))
+    lines.push('')
+  }
+
+  lines.push('ALL CLAIMS BY DOCUMENT', '-'.repeat(40))
+  for (const { docId, claims } of packet) {
     lines.push(`## ${titleOf.get(docId) ?? docId}`)
-    for (const c of claims) {
-      lines.push(`  [${c.status}${c.needsQuoteCheck ? ', CHECK VS AUDIO' : ''}] ${c.text}`)
-      for (const s of c.sources) {
-        lines.push(`      - ${s.title}${s.url ? ` (${s.url})` : ''}${s.locator ? ` @ ${s.locator}` : ''}`)
-      }
-      if (c.sources.length === 0) lines.push('      - (no source linked)')
-    }
+    for (const c of claims) lines.push(...claimLines(c))
     lines.push('')
   }
   return lines.join('\n')
@@ -108,6 +148,9 @@ export function registerIpc(): void {
   ipcMain.handle('project:open', (_e, path: string) => projectService.open(path))
   ipcMain.handle('project:close', () => projectService.close())
   ipcMain.handle('project:getMeta', () => projectService.getMeta())
+  ipcMain.handle('project:setLastSelected', (_e, id: string | null) =>
+    projectService.setLastSelected(id)
+  )
   ipcMain.handle('project:updateSettings', (_e, patch: Partial<ProjectSettings>) =>
     projectService.updateSettings(patch)
   )
@@ -244,6 +287,11 @@ export function registerIpc(): void {
   ipcMain.handle('snapshot:create', (_e, itemId: string, name: string) => {
     const { db, paths } = projectService.requireCurrent()
     return snapshots.createSnapshot(db, paths.root, itemId, name)
+  })
+
+  ipcMain.handle('snapshot:createIfChanged', (_e, itemId: string, name: string) => {
+    const { db, paths } = projectService.requireCurrent()
+    return snapshots.createSnapshotIfChanged(db, paths.root, itemId, name)
   })
 
   ipcMain.handle('snapshot:list', (_e, itemId: string) => {
@@ -613,11 +661,11 @@ export function registerIpc(): void {
       ]
     })
     if (res.canceled || !res.filePaths[0]) return null
-    const { title, content } = await importFromFile(res.filePaths[0])
+    const { title, content, stats } = await importFromFile(res.filePaths[0])
     const item = binder.createItem(db, { type: 'document', title, parentId })
     await writeDocument(paths.root, item.id, content)
     binder.setWordCount(db, item.id, countWords(content))
-    return { item, tree: binder.listBinder(db) }
+    return { item, tree: binder.listBinder(db), stats: stats ?? null }
   })
 
   ipcMain.handle('import:scrivener', async (_e, parentId: string | null) => {

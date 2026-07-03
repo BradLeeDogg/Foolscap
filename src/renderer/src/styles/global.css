@@ -7,7 +7,7 @@
   --card: #fffdf8;
   --ink: #1f1d18;
   --ink-soft: #6b6760;
-  --ink-faint: #9a958b;
+  --ink-faint: #6b675c; /* ≥4.5:1 on paper/canvas/card (WCAG AA) */
   --rule: #ddd8cc;
   --rule-strong: #cbc5b6;
   --accent: #5c6b73;
@@ -77,6 +77,13 @@ button {
 }
 button:hover {
   background: var(--hover);
+}
+/* Keyboard navigation must be visible everywhere (WCAG 2.4.7). */
+button:focus-visible,
+[tabindex]:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 button:disabled {
   opacity: 0.45;
@@ -343,6 +350,71 @@ fieldset.field {
 .settings-backup-note {
   margin: 0.25rem 0 0.75rem;
   font-size: 0.8rem;
+}
+
+/* Source filter row + keyboard-first source picker (fact-check linking). */
+.src-filter {
+  display: flex;
+  gap: 0.4rem;
+}
+.src-filter input {
+  flex: 1;
+  min-width: 0;
+}
+.src-picker {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+}
+.src-picker input {
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.4rem;
+}
+.src-picker-list {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 2px 0 0;
+  padding: 0.2rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  max-height: 220px;
+  overflow: auto;
+}
+.src-picker-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.src-picker-list li.active {
+  background: var(--selected);
+}
+.src-picker-title {
+  font-size: 0.8rem;
+}
+.src-picker-sub {
+  font-size: 0.7rem;
+}
+
+/* One quiet "where was I" line after a real absence; auto-fades. */
+.resume-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.3rem 1rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--rule);
 }
 
 /* Shown only while writes to disk are failing; clears itself on recovery. */
@@ -2029,6 +2101,37 @@ button.on {
   flex: none;
   white-space: nowrap;
 }
+.cork-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.cork-mode {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cork-mode button {
+  border-radius: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}
+.cork-mode button.on {
+  background: var(--selected);
+}
+.cork-note {
+  margin: -0.5rem 0 0.75rem;
+  font-size: 0.78rem;
+}
+/* Grid mode: order = binder order. */
+.corkboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+/* Freeform mode: absolutely-pinned, resizable cards on a canvas. */
 .corkboard-canvas {
   position: relative;
 }
@@ -2038,7 +2141,6 @@ button.on {
   left: 1.5rem;
 }
 .card {
-  position: absolute;
   background: var(--card);
   border: 1px solid var(--rule);
   border-top: 4px solid var(--rule-strong);
@@ -2048,6 +2150,10 @@ button.on {
   flex-direction: column;
   gap: 0.4rem;
   box-shadow: var(--shadow);
+  min-height: 150px;
+}
+.card-free {
+  position: absolute;
   resize: both;
   overflow: hidden;
   min-width: 150px;

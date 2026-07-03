@@ -157,6 +157,19 @@ export default function Binder(): JSX.Element {
       if (res) {
         setTree(res.tree)
         select(res.item.id)
+        // Say plainly what survived — and what didn't (footnotes/images).
+        const s = res.stats
+        if (s) {
+          const dropped = [
+            s.footnotesFlattened > 0 &&
+              `${s.footnotesFlattened} footnote${s.footnotesFlattened === 1 ? '' : 's'} flattened to end-of-document text`,
+            s.imagesDropped > 0 && `${s.imagesDropped} image${s.imagesDropped === 1 ? '' : 's'} not imported`
+          ].filter(Boolean)
+          showToast(
+            `Imported ${s.paragraphs} paragraph${s.paragraphs === 1 ? '' : 's'}, ${s.headings} heading${s.headings === 1 ? '' : 's'}` +
+              (dropped.length ? ` — ${dropped.join('; ')}` : ' — nothing was dropped')
+          )
+        }
       }
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Could not import that file.')
@@ -436,7 +449,7 @@ export default function Binder(): JSX.Element {
           <div className="modal trash-modal" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-head">
               <h3>Trash</h3>
-              <button className="icon" onClick={() => setShowTrash(false)}>
+              <button className="icon" aria-label="Close" onClick={() => setShowTrash(false)}>
                 ×
               </button>
             </div>

@@ -65,7 +65,7 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer">
       <div className="drawer-head">
         <h3>Snapshots</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
@@ -108,7 +108,7 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
             <div className="snapshot-diff">
               <div className="drawer-head">
                 <h4>vs. “{diff.name}”</h4>
-                <button className="icon" onClick={() => setDiff(null)}>
+                <button className="icon" aria-label="Close" onClick={() => setDiff(null)}>
                   ×
                 </button>
               </div>

@@ -53,6 +53,29 @@ const BLANK_FORM: Record<ManualField, string> = {
   author: '', title: '', container: '', publisher: '', year: '', locator: '', url: '', notes: ''
 }
 
+type SortKey = 'recent' | 'title' | 'author' | 'year'
+
+/** Substring match across the fields a writer remembers (title/author/year/kind). */
+export function filterSources(sources: Source[], filter: string): Source[] {
+  const q = filter.trim().toLowerCase()
+  if (!q) return sources
+  const terms = q.split(/\s+/)
+  return sources.filter((s) => {
+    const hay = `${s.title} ${s.author} ${s.container} ${s.publisher} ${s.year} ${s.kind}`.toLowerCase()
+    return terms.every((t) => hay.includes(t))
+  })
+}
+
+export function sortSources(sources: Source[], sort: SortKey): Source[] {
+  const by = {
+    recent: (a: Source, b: Source) => b.createdAt - a.createdAt,
+    title: (a: Source, b: Source) => a.title.localeCompare(b.title),
+    author: (a: Source, b: Source) => (a.author || '￿').localeCompare(b.author || '￿'),
+    year: (a: Source, b: Source) => (b.year || '').localeCompare(a.year || '')
+  }[sort]
+  return [...sources].sort(by)
+}
+
 function hostnameOf(raw: string): string {
   try {
     return new URL(/^[a-z]+:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.replace(/^www\./, '')
@@ -73,6 +96,11 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
 
   const [mkind, setMkind] = useState<SourceKind>('book')
   const [form, setForm] = useState<Record<ManualField, string>>({ ...BLANK_FORM })
+
+  // A 200-reference library needs search-not-scroll (and sane ordering).
+  const [filter, setFilter] = useState('')
+  const [sort, setSort] = useState<SortKey>('recent')
+  const visibleSources = sortSources(filterSources(sources, filter), sort)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const initialStyle = (): CitationStyle => {
@@ -178,7 +206,7 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer">
       <div className="drawer-head">
         <h3>Sources</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
@@ -226,9 +254,29 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
         <p className="src-msg muted">Fill what you know — leave the rest blank.</p>
       </div>
 
+      {sources.length > 6 && (
+        <div className="src-filter drawer-pad">
+          <input
+            value={filter}
+            placeholder={`Filter ${sources.length} sources…`}
+            onChange={(e) => setFilter(e.target.value)}
+            aria-label="Filter sources"
+          />
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort sources">
+            <option value="recent">Recent</option>
+            <option value="title">Title</option>
+            <option value="author">Author</option>
+            <option value="year">Year</option>
+          </select>
+        </div>
+      )}
+
       <ul className="src-list">
         {sources.length === 0 && <li className="muted drawer-pad">No sources yet.</li>}
-        {sources.map((s) => (
+        {visibleSources.length === 0 && sources.length > 0 && (
+          <li className="muted drawer-pad">No sources match “{filter}”.</li>
+        )}
+        {visibleSources.map((s) => (
           <li key={s.id}>
             <div className="src-item">
               <span className={`src-kind src-kind-${s.kind}`}>{s.kind}</span>
@@ -242,7 +290,7 @@ export default function SourcesPanel({ onClose }: Props): JSX.Element {
               >
                 ✎
               </button>
-              <button className="recent-remove" title="Delete" onClick={() => remove(s.id)}>
+              <button className="recent-remove" aria-label="Delete source" title="Delete" onClick={() => remove(s.id)}>
                 ×
               </button>
             </div>

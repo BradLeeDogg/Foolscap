@@ -80,11 +80,11 @@ export default function ResearchViewer(): JSX.Element | null {
           {src?.title ?? 'Research'}
         </h3>
         {(content?.type === 'pdf' || content?.type === 'file' || content?.type === 'image') && (
-          <button className="rv-ext" title="Open in default app" onClick={() => window.api.source.openExternal(id)}>
+          <button className="rv-ext" aria-label="Open in default app" title="Open in default app" onClick={() => window.api.source.openExternal(id)}>
             ↗
           </button>
         )}
-        <button className="icon" onClick={close}>
+        <button className="icon" aria-label="Close" onClick={close}>
           ×
         </button>
       </div>

@@ -159,6 +159,8 @@ export interface OpenProjectResult {
   meta: ProjectMeta
   tree: BinderItem[]
   labels: LabelDef[]
+  /** Last selection from the previous session ("where was I"). */
+  lastSelectedId?: string | null
 }
 
 export interface LabelDef {
@@ -213,6 +215,8 @@ export interface FoolscapAPI {
     close(): Promise<void>
     getMeta(): Promise<ProjectMeta | null>
     updateSettings(patch: Partial<ProjectSettings>): Promise<ProjectMeta>
+    /** Persist the current selection for next session's "resume where I was". */
+    setLastSelected(id: string | null): Promise<void>
   }
   binder: {
     list(): Promise<BinderItem[]>
@@ -250,6 +254,8 @@ export interface FoolscapAPI {
   }
   snapshot: {
     create(itemId: string, name: string): Promise<Snapshot>
+    /** Snapshot only if the doc differs from its latest snapshot (Ctrl+S). */
+    createIfChanged(itemId: string, name: string): Promise<Snapshot | null>
     list(itemId: string): Promise<Snapshot[]>
     read(snapshotId: string): Promise<DocumentContent | null>
     restore(snapshotId: string): Promise<DocumentContent>
@@ -367,8 +373,18 @@ export interface FoolscapAPI {
     text(req: CompileRequest): Promise<{ path: string } | null>
   }
   importer: {
-    /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document. */
-    file(parentId: string | null): Promise<{ item: BinderItem; tree: BinderItem[] } | null>
+    /** Pick a DOCX/Markdown/RTF/TXT file and import it as a new document.
+     *  stats says what survived (and what was flattened/dropped) — honesty. */
+    file(parentId: string | null): Promise<{
+      item: BinderItem
+      tree: BinderItem[]
+      stats: {
+        paragraphs: number
+        headings: number
+        footnotesFlattened: number
+        imagesDropped: number
+      } | null
+    } | null>
     /** Pick a Scrivener .scrivx file (or .scriv folder) and import its structure. */
     scrivener(
       parentId: string | null

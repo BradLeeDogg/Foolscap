@@ -5,10 +5,16 @@ interface Props {
 const SHORTCUTS: Array<[string, string]> = [
   ['Command palette', 'Ctrl/⌘ K'],
   ['Go to document', 'Ctrl/⌘ P'],
+  ['Save now + snapshot', 'Ctrl/⌘ S'],
   ['Find & replace', 'Ctrl/⌘ F'],
   ['New document / folder', 'Ctrl/⌘ N · ⇧N'],
+  ['Rename in binder', 'F2'],
+  ['Move item up / down', 'Alt ↑ · ↓'],
+  ['Undo structure/metadata edit', 'Ctrl/⌘ Z (outside text)'],
   ['Split / merge document', 'Ctrl/⌘ ⇧ K · ⇧M'],
   ['Scrivenings / Corkboard / Outliner', 'Ctrl/⌘ 1 · 2 · 3'],
+  ['Inspector / Sources / Fact-check', 'Ctrl/⌘ ⇧ I · ⇧R · ⇧F'],
+  ['Close topmost panel', 'Esc'],
   ['Compile & export', 'Ctrl/⌘ E']
 ]
 
@@ -28,7 +34,7 @@ export default function HelpDialog({ onClose }: Props): JSX.Element {
       <div className="modal help-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Welcome to Foolscap</h2>
-          <button className="icon" onClick={onClose}>
+          <button className="icon" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </div>

@@ -30,6 +30,7 @@ export type AppCommand =
   | 'open-settings'
   | 'backup-now'
   | 'toggle-theme'
+  | 'save-now'
   | 'help'
 
 export function runCommand(cmd: AppCommand): void {

@@ -113,6 +113,7 @@ export default function Launcher(): JSX.Element {
                   </button>
                   <button
                     className="recent-remove"
+                    aria-label="Remove from list"
                     title="Remove from list"
                     onClick={() => removeRecent(r.path)}
                   >

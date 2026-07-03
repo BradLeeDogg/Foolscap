@@ -34,7 +34,7 @@ export default function AnnotationsPanel({ editor, onClose }: Props): JSX.Elemen
     <aside className="drawer annotations">
       <div className="drawer-head">
         <h3>Notes &amp; Footnotes</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>

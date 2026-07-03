@@ -10,6 +10,7 @@ import {
   PageNumber,
   Packer,
   Paragraph,
+  TableOfContents,
   TextRun,
   convertInchesToTwip
 } from 'docx'
@@ -276,7 +277,7 @@ export async function compileToDocxBuffer(root: string, req: CompileRequest): Pr
   }
   const roundedWords = Math.max(100, Math.round(totalWords / 100) * 100)
 
-  const body: Paragraph[] = []
+  const body: Array<Paragraph | TableOfContents> = []
   if (preset.bylineDateline) {
     if (meta.byline) body.push(new Paragraph({ children: [new TextRun(`By ${meta.byline}`)] }))
     if (meta.dateline) body.push(new Paragraph({ children: [new TextRun(meta.dateline)] }))
@@ -298,6 +299,21 @@ export async function compileToDocxBuffer(root: string, req: CompileRequest): Pr
     } else if (e.docId) {
       if (e.pageBreak) body.push(new Paragraph({ children: [new PageBreak()] }))
       else if (prevWasDoc && preset.sceneBreak) body.push(center(preset.sceneBreak, preset))
+      // A document titled "Table of Contents" becomes a real Word ToC field
+      // (built from the compiled chapter headings; Word paginates it on open).
+      if (/^table of contents$/i.test((e.title ?? '').trim())) {
+        body.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun('Table of Contents')],
+            spacing: bodySpacing(preset),
+            pageBreakBefore: true
+          }),
+          new TableOfContents('Table of Contents', { hyperlink: true, headingStyleRange: '1-3' })
+        )
+        prevWasDoc = false
+        continue
+      }
       const c = contents[e.docId] as { doc?: ProseMirrorNode } | null
       body.push(...blockParagraphs(c?.doc?.content, preset, fns))
       prevWasDoc = true

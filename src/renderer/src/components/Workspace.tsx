@@ -98,6 +98,59 @@ export default function Workspace(): JSX.Element {
     }
   }, [])
 
+  // "Where was I": one quiet line on open when resuming after a real gap.
+  const [resume, setResume] = useState<string | null>(null)
+  useEffect(() => {
+    const s = useStore.getState()
+    const sel = s.tree.find((t) => t.id === s.selectedId)
+    if (!sel) return
+    const gapMs = Date.now() - sel.updatedAt
+    if (gapMs < 24 * 3600_000) return
+    const days = Math.round(gapMs / 86_400_000)
+    const when = days >= 14 ? `${Math.round(days / 7)} weeks ago` : days >= 2 ? `${days} days ago` : 'yesterday'
+    setResume(`Resuming “${sel.title}” · last edited ${when}`)
+    const t = setTimeout(() => setResume(null), 10_000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta?.id])
+
+  // Panels close in reverse open order via Esc; track that order here.
+  const panelStack = useRef<string[]>([])
+  const panelSetters: Record<string, [boolean, (v: boolean) => void]> = {
+    find: [showFind, setShowFind],
+    targets: [showTargets, setShowTargets],
+    inspector: [showInspector, setShowInspector],
+    sources: [showSources, setShowSources],
+    factcheck: [showFactCheck, setShowFactCheck],
+    snapshots: [showSnapshots, setShowSnapshots],
+    transcripts: [showTranscripts, setShowTranscripts],
+    proofread: [showProof, setShowProof],
+    analysis: [showAnalysis, setShowAnalysis]
+  }
+  const panelSettersRef = useRef(panelSetters)
+  panelSettersRef.current = panelSetters
+  const togglePanel = (key: string, force?: boolean): void => {
+    const [open, set] = panelSettersRef.current[key]!
+    const next = force ?? !open
+    set(next)
+    panelStack.current = panelStack.current.filter((k) => k !== key)
+    if (next) panelStack.current.push(key)
+  }
+
+  // Ctrl+S: flush pending saves, acknowledge, and snapshot if anything changed.
+  const saveNow = async (): Promise<void> => {
+    await flushAllDirty()
+    const state = useStore.getState()
+    state.setSaveState('saved', Date.now())
+    const sel = state.tree.find((t) => t.id === state.selectedId)
+    if (sel?.type === 'document') {
+      const snap = await window.api.snapshot.createIfChanged(sel.id, 'Ctrl+S')
+      state.showToast(snap ? 'Saved ✓ — snapshot taken' : 'Saved ✓ (no changes since last snapshot)')
+    } else {
+      state.showToast('Saved ✓')
+    }
+  }
+
   // Workspace-owned menu/shortcut commands (ref keeps handler closures fresh).
   const cmdRef = useRef<(cmd: string) => void>(() => {})
   cmdRef.current = (cmd) => {
@@ -113,7 +166,10 @@ export default function Workspace(): JSX.Element {
         setShowCompile(true)
         break
       case 'snapshot':
-        setShowSnapshots(true)
+        togglePanel('snapshots', true)
+        break
+      case 'save-now':
+        void saveNow()
         break
       case 'split-view':
         toggleSplit()
@@ -134,25 +190,25 @@ export default function Workspace(): JSX.Element {
         setShowHelp(true)
         break
       case 'panel-inspector':
-        setShowInspector((v) => !v)
+        togglePanel('inspector')
         break
       case 'panel-sources':
-        setShowSources((v) => !v)
+        togglePanel('sources')
         break
       case 'panel-factcheck':
-        setShowFactCheck((v) => !v)
+        togglePanel('factcheck')
         break
       case 'panel-transcripts':
-        setShowTranscripts((v) => !v)
+        togglePanel('transcripts')
         break
       case 'panel-proofread':
-        setShowProof((v) => !v)
+        togglePanel('proofread')
         break
       case 'panel-analysis':
-        setShowAnalysis((v) => !v)
+        togglePanel('analysis')
         break
       case 'panel-targets':
-        setShowTargets((v) => !v)
+        togglePanel('targets')
         break
       case 'open-settings':
         setShowSettings(true)
@@ -168,6 +224,31 @@ export default function Workspace(): JSX.Element {
     }
   }
   useEffect(() => onCommand((cmd) => cmdRef.current(cmd)), [])
+
+  // Esc closes the most recently opened side panel (modals handle their own
+  // Esc and stop propagation; composition owns Esc entirely).
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      const s = useStore.getState()
+      if (s.composition) return
+      // Any modal open → its own handler wins.
+      if (document.querySelector('.modal-backdrop')) return
+      const stack = panelStack.current
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const key = stack[i]!
+        const entry = panelSettersRef.current[key]
+        if (entry?.[0]) {
+          entry[1](false)
+          panelStack.current = stack.filter((k) => k !== key)
+          e.preventDefault()
+          return
+        }
+      }
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [])
 
   // Structural undo: Ctrl/⌘-Z outside a text field reverses binder/metadata
   // ops (inside a field, the native/ProseMirror history keeps the keystroke).
@@ -252,7 +333,7 @@ export default function Workspace(): JSX.Element {
           </span>
           <span className={`savestate ${saveState}`}>{saveLabel(saveState, lastSavedAt)}</span>
           <span className="sep" />
-          <button className={showFind ? 'on' : ''} onClick={() => setShowFind((v) => !v)}>
+          <button className={showFind ? 'on' : ''} onClick={() => togglePanel('find')}>
             Find
           </button>
           <button onClick={() => setShowQuickOpen(true)} title="Quick open (Ctrl/⌘ P)">
@@ -265,28 +346,25 @@ export default function Workspace(): JSX.Element {
           <button onClick={openCorkboard} title="Index cards for a folder">
             Corkboard
           </button>
-          <button className={showInspector ? 'on' : ''} onClick={() => setShowInspector((v) => !v)}>
+          <button className={showInspector ? 'on' : ''} onClick={() => togglePanel('inspector')}>
             Inspector
           </button>
-          <button className={showSources ? 'on' : ''} onClick={() => setShowSources((v) => !v)}>
+          <button className={showSources ? 'on' : ''} onClick={() => togglePanel('sources')}>
             Sources
           </button>
-          <button className={showFactCheck ? 'on' : ''} onClick={() => setShowFactCheck((v) => !v)}>
+          <button className={showFactCheck ? 'on' : ''} onClick={() => togglePanel('factcheck')}>
             Fact-check
           </button>
-          <button
-            className={showTranscripts ? 'on' : ''}
-            onClick={() => setShowTranscripts((v) => !v)}
-          >
+          <button className={showTranscripts ? 'on' : ''} onClick={() => togglePanel('transcripts')}>
             Transcripts
           </button>
-          <button className={showProof ? 'on' : ''} onClick={() => setShowProof((v) => !v)}>
+          <button className={showProof ? 'on' : ''} onClick={() => togglePanel('proofread')}>
             Proofread
           </button>
-          <button className={showTargets ? 'on' : ''} onClick={() => setShowTargets((v) => !v)}>
+          <button className={showTargets ? 'on' : ''} onClick={() => togglePanel('targets')}>
             Targets
           </button>
-          <button className={showSnapshots ? 'on' : ''} onClick={() => setShowSnapshots((v) => !v)}>
+          <button className={showSnapshots ? 'on' : ''} onClick={() => togglePanel('snapshots')}>
             Snapshots
           </button>
           <button onClick={handleBackup}>Back up now</button>
@@ -303,6 +381,14 @@ export default function Workspace(): JSX.Element {
       {backupMsg && <div className="toast">{backupMsg}</div>}
       <StoreToast />
       <SaveErrorBanner />
+      {resume && (
+        <div className="resume-line">
+          {resume}
+          <button className="icon" aria-label="Dismiss" onClick={() => setResume(null)}>
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="workspace-body">
         <PanelGroup direction="horizontal" autoSaveId="wp-main-split">

@@ -60,7 +60,7 @@ export default function SettingsDialog({ onClose }: Props): JSX.Element {
       <div className="modal settings" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Settings</h2>
-          <button className="icon" onClick={onClose}>
+          <button className="icon" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </div>

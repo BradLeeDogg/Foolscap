@@ -234,7 +234,19 @@ class ProjectService {
       lastOpenedAt: Date.now()
     })
 
-    return { meta, tree: listBinder(db), labels: listLabels(db) }
+    return {
+      meta,
+      tree: listBinder(db),
+      labels: listLabels(db),
+      lastSelectedId: getMetaValue(db, 'ui.lastSelectedId')
+    }
+  }
+
+  /** Remember the writer's position so reopening resumes where they were. */
+  setLastSelected(id: string | null): void {
+    const project = this.current
+    if (!project) return
+    setMetaValue(project.db, 'ui.lastSelectedId', id ?? '')
   }
 
   async close(): Promise<void> {

@@ -1,13 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { BinderItem } from '@shared/types'
 import type { CardRect, LabelDef } from '@shared/api'
 import { useStore } from '../store/useStore'
 import { childrenOf } from '../lib/tree'
+import { pushUndo } from '../lib/undo'
 
 interface Props {
   folderId: string
 }
 
+type BoardMode = 'grid' | 'freeform'
 type Layout = Record<string, CardRect>
 
 const CARD_W = 240
@@ -15,7 +27,7 @@ const CARD_H = 176
 const GAP = 20
 const COLS = 4
 
-/** A starting grid slot for a card that has no saved position yet. */
+/** A starting slot for a freeform card that has no saved position yet. */
 function defaultRect(i: number): CardRect {
   return {
     x: GAP + (i % COLS) * (CARD_W + GAP),
@@ -25,10 +37,15 @@ function defaultRect(i: number): CardRect {
   }
 }
 
+const modeKey = (folderId: string): string => `wp-cork-mode:${folderId}`
+
 /**
- * A freeform corkboard: every child of the folder is an index card the writer
- * can drag anywhere and resize to any size. Positions/sizes persist per card. A
- * header carries the folder's own synopsis, plus a button to pin new cards.
+ * Index cards for a folder's children, in two modes:
+ *  - Grid (default): card order IS binder order — dragging reorders the
+ *    manuscript (and compile), exactly like the outliner.
+ *  - Freeform: pin cards anywhere and resize them; positions persist but are
+ *    explicitly decorative (they never change manuscript order).
+ * A header carries the folder's own synopsis, plus a button to add cards.
  */
 export default function Corkboard({ folderId }: Props): JSX.Element {
   const tree = useStore((s) => s.tree)
@@ -38,12 +55,170 @@ export default function Corkboard({ folderId }: Props): JSX.Element {
   const folder = useMemo(() => tree.find((t) => t.id === folderId), [tree, folderId])
   const cards = useMemo(() => childrenOf(tree, folderId), [tree, folderId])
 
+  const [mode, setMode] = useState<BoardMode>(
+    () => (localStorage.getItem(modeKey(folderId)) as BoardMode) || 'grid'
+  )
+  useEffect(() => {
+    setMode((localStorage.getItem(modeKey(folderId)) as BoardMode) || 'grid')
+  }, [folderId])
+  const changeMode = (m: BoardMode): void => {
+    setMode(m)
+    try {
+      localStorage.setItem(modeKey(folderId), m)
+    } catch {
+      /* keep in-memory choice */
+    }
+  }
+
+  const addCard = async (): Promise<void> => {
+    const { tree: next } = await window.api.binder.create({
+      type: 'document',
+      title: 'Untitled',
+      parentId: folderId
+    })
+    setTree(next)
+  }
+
+  return (
+    <div className="corkboard">
+      {folder && (
+        <div className="corkboard-head">
+          <textarea
+            key={folder.id}
+            className="corkboard-synopsis"
+            defaultValue={folder.synopsis}
+            placeholder={`Synopsis for “${folder.title}”…`}
+            onBlur={(e) => {
+              const old = folder.synopsis
+              const next = e.target.value
+              if (old === next) return
+              void window.api.binder.updateSynopsis(folder.id, next)
+              patchItem(folder.id, { synopsis: next })
+              pushUndo({
+                label: `Synopsis of “${folder.title}”`,
+                undo: () => {
+                  void window.api.binder.updateSynopsis(folder.id, old)
+                  patchItem(folder.id, { synopsis: old })
+                },
+                redo: () => {
+                  void window.api.binder.updateSynopsis(folder.id, next)
+                  patchItem(folder.id, { synopsis: next })
+                }
+              })
+            }}
+          />
+          <div className="cork-controls">
+            <div className="cork-mode" role="group" aria-label="Corkboard mode">
+              <button
+                className={mode === 'grid' ? 'on' : ''}
+                title="Card order is manuscript order — drag to reorder the binder"
+                onClick={() => changeMode('grid')}
+              >
+                Grid
+              </button>
+              <button
+                className={mode === 'freeform' ? 'on' : ''}
+                title="Pin cards anywhere (positions don’t change manuscript order)"
+                onClick={() => changeMode('freeform')}
+              >
+                Freeform
+              </button>
+            </div>
+            <button className="cork-add" onClick={addCard} title="Add a new card to this folder">
+              ＋ Add card
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'freeform' && (
+        <p className="muted cork-note">Freeform: positions don’t change manuscript order.</p>
+      )}
+
+      {cards.length === 0 ? (
+        <div className="editor-empty">
+          <p>No cards yet.</p>
+          <p className="muted">Use “＋ Add card” to start outlining this folder.</p>
+        </div>
+      ) : mode === 'grid' ? (
+        <GridBoard folderId={folderId} cards={cards} labels={labels} />
+      ) : (
+        <FreeBoard cards={cards} labels={labels} />
+      )}
+    </div>
+  )
+}
+
+// --- Grid (ordered) mode ------------------------------------------------------
+
+function GridBoard({
+  folderId,
+  cards,
+  labels
+}: {
+  folderId: string
+  cards: BinderItem[]
+  labels: LabelDef[]
+}): JSX.Element {
+  const setTree = useStore((s) => s.setTree)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  const onDragEnd = async ({ active, over }: DragEndEvent): Promise<void> => {
+    if (!over || active.id === over.id) return
+    const id = String(active.id)
+    const ids = cards.map((c) => c.id)
+    const oldIndex = ids.indexOf(id)
+    const newIndex = arrayMove(ids, oldIndex, ids.indexOf(String(over.id))).indexOf(id)
+    const title = cards[oldIndex]?.title ?? 'card'
+    setTree(await window.api.binder.move({ id, newParentId: folderId, newIndex }))
+    pushUndo({
+      label: `Reorder “${title}”`,
+      undo: async () =>
+        setTree(await window.api.binder.move({ id, newParentId: folderId, newIndex: oldIndex })),
+      redo: async () =>
+        setTree(await window.api.binder.move({ id, newParentId: folderId, newIndex }))
+    })
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={cards.map((c) => c.id)} strategy={rectSortingStrategy}>
+        <div className="corkboard-grid">
+          {cards.map((card) => (
+            <GridCard key={card.id} item={card} labels={labels} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  )
+}
+
+function GridCard({ item, labels }: { item: BinderItem; labels: LabelDef[] }): JSX.Element {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id
+  })
+  const statusColor = labels.find((l) => l.kind === 'status' && l.id === item.statusId)?.color
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    borderTopColor: statusColor ?? 'var(--rule-strong)'
+  }
+  return (
+    <div ref={setNodeRef} style={style} className="card">
+      <CardBody item={item} labels={labels} dragHandle={{ ...attributes, ...listeners }} />
+    </div>
+  )
+}
+
+// --- Freeform (pinned) mode ----------------------------------------------------
+
+function FreeBoard({ cards, labels }: { cards: BinderItem[]; labels: LabelDef[] }): JSX.Element {
   const [layout, setLayout] = useState<Layout>({})
   useEffect(() => {
     void window.api.corkboard.getLayout().then(setLayout)
   }, [])
 
-  // Resolve each card's rect: its saved layout, else a default grid slot.
   const rects = useMemo(() => {
     const out: Layout = {}
     cards.forEach((c, i) => {
@@ -57,17 +232,6 @@ export default function Corkboard({ folderId }: Props): JSX.Element {
     void window.api.corkboard.setRect(id, rect)
   }
 
-  const addCard = async (): Promise<void> => {
-    const { item, tree: next } = await window.api.binder.create({
-      type: 'document',
-      title: 'Untitled',
-      parentId: folderId
-    })
-    setTree(next)
-    persist(item.id, defaultRect(cards.length))
-  }
-
-  // Size the canvas to contain every card so it scrolls when cards spread out.
   const canvas = useMemo(() => {
     let w = 640
     let h = 320
@@ -82,44 +246,21 @@ export default function Corkboard({ folderId }: Props): JSX.Element {
   }, [cards, rects])
 
   return (
-    <div className="corkboard">
-      {folder && (
-        <div className="corkboard-head">
-          <textarea
-            key={folder.id}
-            className="corkboard-synopsis"
-            defaultValue={folder.synopsis}
-            placeholder={`Synopsis for “${folder.title}”…`}
-            onBlur={(e) => {
-              void window.api.binder.updateSynopsis(folder.id, e.target.value)
-              patchItem(folder.id, { synopsis: e.target.value })
-            }}
-          />
-          <button className="cork-add" onClick={addCard} title="Pin a new card to this corkboard">
-            ＋ Add card
-          </button>
-        </div>
-      )}
-
-      <div className="corkboard-canvas" style={{ width: canvas.w, height: canvas.h }}>
-        {cards.length === 0 && (
-          <div className="cork-empty muted">No cards yet. Use “＋ Add card” to start outlining.</div>
-        )}
-        {cards.map((card) => (
-          <Card
-            key={card.id}
-            item={card}
-            labels={labels}
-            rect={rects[card.id]!}
-            onChange={(r) => persist(card.id, r)}
-          />
-        ))}
-      </div>
+    <div className="corkboard-canvas" style={{ width: canvas.w, height: canvas.h }}>
+      {cards.map((card) => (
+        <FreeCard
+          key={card.id}
+          item={card}
+          labels={labels}
+          rect={rects[card.id]!}
+          onChange={(r) => persist(card.id, r)}
+        />
+      ))}
     </div>
   )
 }
 
-function Card({
+function FreeCard({
   item,
   labels,
   rect,
@@ -130,14 +271,10 @@ function Card({
   rect: CardRect
   onChange: (rect: CardRect) => void
 }): JSX.Element {
-  const select = useStore((s) => s.select)
-  const patchItem = useStore((s) => s.patchItem)
-  const [editing, setEditing] = useState(false)
   const [pos, setPos] = useState({ x: rect.x, y: rect.y })
   const [size, setSize] = useState({ w: rect.w, h: rect.h })
   const ref = useRef<HTMLDivElement>(null)
 
-  // Latest values for the resize observer (created once, must not go stale).
   const posRef = useRef(pos)
   posRef.current = pos
   const sizeRef = useRef(size)
@@ -145,7 +282,6 @@ function Card({
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
-  // Sync from props when the saved rect changes (e.g. layout loads).
   useEffect(() => setPos({ x: rect.x, y: rect.y }), [rect.x, rect.y])
   useEffect(() => setSize({ w: rect.w, h: rect.h }), [rect.w, rect.h])
 
@@ -176,7 +312,7 @@ function Card({
 
   const onGrabPointerDown = (e: React.PointerEvent): void => {
     const target = e.target as HTMLElement
-    if (editing || target.closest('.card-title, .card-title-input')) return
+    if (target.closest('.card-title, .card-title-input, button, select, textarea')) return
     e.preventDefault()
     const start = { mx: e.clientX, my: e.clientY, ox: posRef.current.x, oy: posRef.current.y }
     const move = (ev: PointerEvent): void => {
@@ -198,23 +334,12 @@ function Card({
     window.addEventListener('pointerup', up)
   }
 
-  const commitTitle = (value: string): void => {
-    setEditing(false)
-    const title = value.trim()
-    if (!title || title === item.title) return
-    void window.api.binder.rename(item.id, title)
-    patchItem(item.id, { title })
-  }
-
-  const statuses = labels.filter((l) => l.kind === 'status')
-  const labelDefs = labels.filter((l) => l.kind === 'label')
-  const statusColor = statuses.find((s) => s.id === item.statusId)?.color
-  const labelColor = labelDefs.find((l) => l.id === item.labelId)?.color
+  const statusColor = labels.find((l) => l.kind === 'status' && l.id === item.statusId)?.color
 
   return (
     <div
       ref={ref}
-      className="card"
+      className="card card-free"
       style={{
         left: pos.x,
         top: pos.y,
@@ -223,8 +348,69 @@ function Card({
         borderTopColor: statusColor ?? 'var(--rule-strong)'
       }}
     >
-      <div className="card-grab" onPointerDown={onGrabPointerDown} title="Drag to move">
-        <span className="card-icon">{item.type === 'folder' ? '📁' : '📄'}</span>
+      <CardBody item={item} labels={labels} onHeaderPointerDown={onGrabPointerDown} />
+    </div>
+  )
+}
+
+// --- Shared card body -----------------------------------------------------------
+
+function CardBody({
+  item,
+  labels,
+  dragHandle,
+  onHeaderPointerDown
+}: {
+  item: BinderItem
+  labels: LabelDef[]
+  dragHandle?: Record<string, unknown>
+  onHeaderPointerDown?: (e: React.PointerEvent) => void
+}): JSX.Element {
+  const select = useStore((s) => s.select)
+  const patchItem = useStore((s) => s.patchItem)
+  const [editing, setEditing] = useState(false)
+
+  const statuses = labels.filter((l) => l.kind === 'status')
+  const labelDefs = labels.filter((l) => l.kind === 'label')
+  const labelColor = labelDefs.find((l) => l.id === item.labelId)?.color
+
+  const commitTitle = (value: string): void => {
+    setEditing(false)
+    const title = value.trim()
+    if (!title || title === item.title) return
+    const old = item.title
+    void window.api.binder.rename(item.id, title)
+    patchItem(item.id, { title })
+    pushUndo({
+      label: `Rename “${old}”`,
+      undo: () => {
+        void window.api.binder.rename(item.id, old)
+        patchItem(item.id, { title: old })
+      },
+      redo: () => {
+        void window.api.binder.rename(item.id, title)
+        patchItem(item.id, { title })
+      }
+    })
+  }
+
+  const edit = (
+    label: string,
+    apply: (v: string | null) => void,
+    oldValue: string | null,
+    newValue: string | null
+  ): void => {
+    if (oldValue === newValue) return
+    apply(newValue)
+    pushUndo({ label, undo: () => apply(oldValue), redo: () => apply(newValue) })
+  }
+
+  return (
+    <>
+      <div className="card-grab" onPointerDown={onHeaderPointerDown} title="Drag to move">
+        <span className="card-icon" {...(dragHandle ?? {})}>
+          {item.type === 'folder' ? '📁' : '📄'}
+        </span>
         {editing ? (
           <input
             autoFocus
@@ -252,19 +438,33 @@ function Card({
         className="card-synopsis"
         defaultValue={item.synopsis}
         placeholder="Synopsis…"
-        onBlur={(e) => {
-          void window.api.binder.updateSynopsis(item.id, e.target.value)
-          patchItem(item.id, { synopsis: e.target.value })
-        }}
+        onBlur={(e) =>
+          edit(
+            `Synopsis of “${item.title}”`,
+            (v) => {
+              void window.api.binder.updateSynopsis(item.id, v ?? '')
+              patchItem(item.id, { synopsis: v ?? '' })
+            },
+            item.synopsis,
+            e.target.value
+          )
+        }
       />
       <div className="card-footer">
         <select
+          aria-label="Status"
           value={item.statusId ?? ''}
-          onChange={(e) => {
-            const v = e.target.value || null
-            void window.api.binder.setStatus(item.id, v)
-            patchItem(item.id, { statusId: v })
-          }}
+          onChange={(e) =>
+            edit(
+              `Status of “${item.title}”`,
+              (v) => {
+                void window.api.binder.setStatus(item.id, v)
+                patchItem(item.id, { statusId: v })
+              },
+              item.statusId,
+              e.target.value || null
+            )
+          }
         >
           <option value="">No status</option>
           {statuses.map((s) => (
@@ -274,12 +474,19 @@ function Card({
           ))}
         </select>
         <select
+          aria-label="Label"
           value={item.labelId ?? ''}
-          onChange={(e) => {
-            const v = e.target.value || null
-            void window.api.binder.setLabel(item.id, v)
-            patchItem(item.id, { labelId: v })
-          }}
+          onChange={(e) =>
+            edit(
+              `Label of “${item.title}”`,
+              (v) => {
+                void window.api.binder.setLabel(item.id, v)
+                patchItem(item.id, { labelId: v })
+              },
+              item.labelId,
+              e.target.value || null
+            )
+          }
         >
           <option value="">No label</option>
           {labelDefs.map((l) => (
@@ -289,6 +496,6 @@ function Card({
           ))}
         </select>
       </div>
-    </div>
+    </>
   )
 }

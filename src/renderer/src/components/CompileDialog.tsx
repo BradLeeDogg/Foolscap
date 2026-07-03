@@ -27,9 +27,9 @@ function buildEntries(
   for (const child of childrenOf(tree, rootId)) {
     if (child.type === 'folder') {
       entries.push({ heading: child.title })
-      for (const d of descendantDocuments(tree, child.id)) entries.push({ docId: d.id })
+      for (const d of descendantDocuments(tree, child.id)) entries.push({ docId: d.id, title: d.title })
     } else {
-      entries.push({ docId: child.id })
+      entries.push({ docId: child.id, title: child.title })
     }
   }
   return entries
@@ -165,7 +165,7 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
       <div className="modal compile" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Compile &amp; Export</h2>
-          <button className="icon" onClick={onClose}>
+          <button className="icon" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </div>

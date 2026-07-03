@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ClaimStatus, ClaimWithSources, Source } from '@shared/types'
 import { useStore } from '../store/useStore'
+import SourcePicker from './SourcePicker'
 
 interface Props {
   onClose: () => void
@@ -78,7 +79,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer factcheck">
       <div className="drawer-head">
         <h3>Fact-check</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
@@ -142,7 +143,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
                     />
                     check vs. audio
                   </label>
-                  <button className="recent-remove" onClick={() => removeClaim(c.id)}>
+                  <button className="recent-remove" aria-label="Delete claim" onClick={() => removeClaim(c.id)}>
                     ×
                   </button>
                 </div>
@@ -153,16 +154,11 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
                       <button onClick={() => unlink(c.id, s.id)}>×</button>
                     </span>
                   ))}
-                  <select value="" onChange={(e) => link(c.id, e.target.value)}>
-                    <option value="">+ link source…</option>
-                    {sources
-                      .filter((s) => !c.sources.some((cs) => cs.id === s.id))
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.title}
-                        </option>
-                      ))}
-                  </select>
+                  <SourcePicker
+                    sources={sources}
+                    exclude={c.sources.map((cs) => cs.id)}
+                    onPick={(sourceId) => void link(c.id, sourceId)}
+                  />
                 </div>
               </li>
             ))}

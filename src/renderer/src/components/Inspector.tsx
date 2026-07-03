@@ -51,7 +51,7 @@ export default function Inspector({ onClose }: Props): JSX.Element {
   const head = (
     <div className="drawer-head">
       <h3>Inspector</h3>
-      <button className="icon" onClick={onClose}>
+      <button className="icon" aria-label="Close" onClick={onClose}>
         ×
       </button>
     </div>

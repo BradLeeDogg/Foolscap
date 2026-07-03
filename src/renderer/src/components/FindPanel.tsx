@@ -107,7 +107,7 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer">
       <div className="drawer-head">
         <h3>Find</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
@@ -214,7 +214,7 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
               <button className="find-collection" onClick={() => loadCollection(c)}>
                 {c.name}
               </button>
-              <button className="recent-remove" title="Delete" onClick={() => removeCollection(c.id)}>
+              <button className="recent-remove" aria-label="Delete collection" title="Delete" onClick={() => removeCollection(c.id)}>
                 ×
               </button>
             </li>

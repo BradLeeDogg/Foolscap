@@ -43,8 +43,10 @@ export default function TargetsPanel({ onClose }: Props): JSX.Element {
 
   let daysLeft: number | null = null
   let perDay: number | null = null
+  let deadlinePassed = false
   if (deadline) {
     const ms = new Date(deadline).getTime() - Date.now()
+    deadlinePassed = ms < 0
     daysLeft = Math.max(0, Math.ceil(ms / 86_400_000))
     if (projectTarget && daysLeft > 0) {
       perDay = Math.max(0, Math.ceil((projectTarget - total) / daysLeft))
@@ -55,7 +57,7 @@ export default function TargetsPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer">
       <div className="drawer-head">
         <h3>Targets</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
@@ -96,11 +98,18 @@ export default function TargetsPanel({ onClose }: Props): JSX.Element {
             onChange={(e) => save({ deadline: e.target.value || null })}
           />
         </label>
-        {daysLeft !== null && (
+        {deadlinePassed ? (
           <p className="target-note">
-            {daysLeft} day{daysLeft === 1 ? '' : 's'} left
-            {perDay !== null && ` · ~${perDay.toLocaleString()} words/day to finish`}
+            That deadline has passed — pick a new date when you’re ready. The words are still
+            here.
           </p>
+        ) : (
+          daysLeft !== null && (
+            <p className="target-note">
+              {daysLeft} day{daysLeft === 1 ? '' : 's'} left
+              {perDay !== null && ` · ~${perDay.toLocaleString()} words/day to finish`}
+            </p>
+          )
         )}
       </div>
     </aside>

@@ -387,9 +387,9 @@ function dissertationTemplate(): TemplateNode[] {
       title: 'Front Matter',
       children: [
         { type: 'document', title: 'Abstract', synopsis: 'Concise summary.' },
-        { type: 'document', title: 'Table of Contents', synopsis: 'Generated at compile.' },
-        { type: 'document', title: 'List of Figures' },
-        { type: 'document', title: 'List of Tables' }
+        { type: 'document', title: 'Table of Contents', synopsis: 'Becomes a real ToC in DOCX export (Word updates it on open). Delete if unwanted.' },
+        { type: 'document', title: 'List of Figures', synopsis: 'Fill in by hand, or delete before compile.' },
+        { type: 'document', title: 'List of Tables', synopsis: 'Fill in by hand, or delete before compile.' }
       ]
     },
     {
@@ -667,7 +667,7 @@ function thesisTemplate(): TemplateNode[] {
           title: 'Acknowledgments',
           body: ['Thank those who supported the work — advisors, funders, family.']
         },
-        { type: 'document', title: 'Table of Contents', synopsis: 'Generated at compile.' }
+        { type: 'document', title: 'Table of Contents', synopsis: 'Becomes a real ToC in DOCX export (Word updates it on open). Delete if unwanted.' }
       ]
     },
     {

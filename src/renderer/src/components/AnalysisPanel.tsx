@@ -44,7 +44,7 @@ export default function AnalysisPanel({ onClose }: Props): JSX.Element {
     <aside className="drawer">
       <div className="drawer-head">
         <h3>Analysis</h3>
-        <button className="icon" onClick={onClose}>
+        <button className="icon" aria-label="Close" onClick={onClose}>
           ×
         </button>
       </div>
