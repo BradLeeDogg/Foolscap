@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useStore } from './store/useStore'
+import { flushAllDirty, useStore } from './store/useStore'
 import Launcher from './components/Launcher'
 import Workspace from './components/Workspace'
 
@@ -9,6 +9,10 @@ export default function App(): JSX.Element {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
+  // Quit handshake: main holds the window open until pending autosaves land.
+  useEffect(() => {
+    window.api.onFlushRequest(() => flushAllDirty())
+  }, [])
   // A synonym chosen from the right-click thesaurus menu replaces the current
   // selection in the last-focused editor (same path as side-panel inserts).
   useEffect(() => {

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { useStore } from '../store/useStore'
+import { flushAllDirty, useStore } from '../store/useStore'
 import { allDocuments } from '../lib/tree'
 import { onCommand } from '../lib/commands'
+import { redoLast, undoLast } from '../lib/undo'
 import Binder from './Binder'
 import Editor from './Editor'
 import SplitPane from './SplitPane'
@@ -22,6 +23,24 @@ import CompositionMode from './CompositionMode'
 import QuickOpen from './QuickOpen'
 import CommandPalette from './CommandPalette'
 import HelpDialog from './HelpDialog'
+
+/** Transient store-driven toast (undo hints, import summaries). */
+function StoreToast(): JSX.Element | null {
+  const toast = useStore((s) => s.toast)
+  return toast ? <div className="toast">{toast}</div> : null
+}
+
+/** Persistent, self-clearing banner while any editor can't reach the disk. */
+function SaveErrorBanner(): JSX.Element | null {
+  const saveError = useStore((s) => s.saveError)
+  if (!saveError) return null
+  return (
+    <div className="save-error-banner" role="alert">
+      Your last change couldn’t be saved to disk ({saveError}). Retrying automatically —
+      don’t close the app until this clears.
+    </div>
+  )
+}
 
 function saveLabel(state: string, at: number | null): string {
   switch (state) {
@@ -150,12 +169,32 @@ export default function Workspace(): JSX.Element {
   }
   useEffect(() => onCommand((cmd) => cmdRef.current(cmd)), [])
 
+  // Structural undo: Ctrl/⌘-Z outside a text field reverses binder/metadata
+  // ops (inside a field, the native/ProseMirror history keeps the keystroke).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return
+      const t = e.target as HTMLElement
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return
+      e.preventDefault()
+      const done = e.shiftKey ? redoLast() : undoLast()
+      void done.then((label) => {
+        if (label) useStore.getState().showToast(`${e.shiftKey ? 'Redid' : 'Undid'}: ${label}`)
+      })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // Keep Chromium's spell-check dictionary in sync with the project's dialect.
   useEffect(() => {
     void window.api.spellcheck.setDialect(meta?.settings.english === 'british' ? 'british' : 'american')
   }, [meta?.settings.english])
 
   const handleClose = async (): Promise<void> => {
+    // Drain every editor's pending autosave BEFORE the DB closes — otherwise
+    // the last debounce-window of typing dies with the project handle.
+    await flushAllDirty()
     await window.api.project.close()
     closeProject()
   }
@@ -262,6 +301,8 @@ export default function Workspace(): JSX.Element {
       </header>
 
       {backupMsg && <div className="toast">{backupMsg}</div>}
+      <StoreToast />
+      <SaveErrorBanner />
 
       <div className="workspace-body">
         <PanelGroup direction="horizontal" autoSaveId="wp-main-split">

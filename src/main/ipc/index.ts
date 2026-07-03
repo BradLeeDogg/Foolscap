@@ -19,7 +19,7 @@ import { STRUCTURE_BEATS } from '../services/templates'
 import { countWords, emptyDoc, readDocument, writeDocument } from '../services/documents'
 import { documentFile, snapshotFile } from '../services/paths'
 import * as snapshots from '../services/snapshots'
-import { createBackup, listBackups, pruneBackups } from '../services/backups'
+import { createBackup, listBackups, pruneBackups, restoreBackup } from '../services/backups'
 import { getRecents, removeRecent } from '../services/recents'
 import { applyReplace, previewReplace, searchProject } from '../services/search'
 import { createCollection, listCollections, removeCollection } from '../services/collections'
@@ -279,6 +279,14 @@ export function registerIpc(): void {
     return listBackups(paths.root)
   })
 
+  ipcMain.handle('backup:restore', async (_e, fileName: string) => {
+    const { paths } = projectService.requireCurrent()
+    const restoredRoot = await restoreBackup(paths.root, fileName)
+    // Close the current project and open the restored copy — the original
+    // folder is left untouched.
+    return projectService.open(restoredRoot)
+  })
+
   // --- window (composition mode) -------------------------------------------
   ipcMain.handle('window:setFullScreen', (e, on: boolean) => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -517,6 +525,15 @@ export function registerIpc(): void {
     const { db } = projectService.requireCurrent()
     return factcheck.listOutstanding(db)
   })
+
+  ipcMain.handle('factcheck:counts', () => {
+    const { db } = projectService.requireCurrent()
+    return factcheck.claimCounts(db)
+  })
+
+  // Post-export affordances: open the file / reveal it in the OS file manager.
+  ipcMain.handle('app:openPath', (_e, p: string) => shell.openPath(p))
+  ipcMain.handle('app:revealPath', (_e, p: string) => shell.showItemInFolder(p))
 
   // --- compile / export -----------------------------------------------------
   ipcMain.handle('compile:docx', async (_e, req: CompileRequest) => {

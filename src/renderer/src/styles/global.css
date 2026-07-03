@@ -303,6 +303,56 @@ fieldset.field {
   z-index: 20;
   box-shadow: var(--shadow);
 }
+/* Compile fact-check gate: one line of truth at the moment of export. */
+.compile-factline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.1rem;
+  font-size: 0.85rem;
+  border-top: 1px solid var(--rule);
+}
+.compile-factline.warn {
+  color: var(--danger);
+}
+.compile-factline.ok {
+  color: var(--ink-soft);
+}
+.compile-factline .link {
+  padding: 0 0.3rem;
+  text-decoration: underline;
+}
+
+.backups-section {
+  border-top: 1px solid var(--rule);
+  margin-top: 0.75rem;
+}
+.backup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+}
+.backup-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.settings-backup-note {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Shown only while writes to disk are failing; clears itself on recovery. */
+.save-error-banner {
+  background: var(--danger);
+  color: #fff;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
 .workspace-body {
   flex: 1;
   min-height: 0;

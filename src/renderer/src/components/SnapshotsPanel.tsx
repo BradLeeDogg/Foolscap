@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { Snapshot } from '@shared/types'
+import type { BackupInfo, Snapshot } from '@shared/types'
 import { diffLines, type DiffOp } from '@shared/diff'
 import { docLines } from '@shared/docops'
-import { useStore } from '../store/useStore'
+import { flushAllDirty, useStore } from '../store/useStore'
 
 interface Props {
   onClose: () => void
@@ -124,6 +124,65 @@ export default function SnapshotsPanel({ onClose }: Props): JSX.Element {
           )}
         </>
       )}
+      <BackupsSection />
     </aside>
+  )
+}
+
+/** Whole-project time travel: list the automatic/manual backup zips and
+ *  restore any of them into a fresh sibling folder (never in place). */
+function BackupsSection(): JSX.Element {
+  const openResult = useStore((s) => s.openResult)
+  const [backups, setBackups] = useState<BackupInfo[]>([])
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void window.api.backup.list().then(setBackups)
+  }, [])
+
+  const restore = async (b: BackupInfo): Promise<void> => {
+    if (
+      !window.confirm(
+        `Restore “${b.fileName}” as a new copy of the project?\n\nThe current project is left untouched; the restored copy opens in a new folder beside it.`
+      )
+    )
+      return
+    setBusy(true)
+    try {
+      await flushAllDirty()
+      openResult(await window.api.backup.restore(b.fileName))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Could not restore that backup.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const size = (n: number): string => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`)
+
+  return (
+    <div className="backups-section">
+      <div className="drawer-head">
+        <h4>Project backups</h4>
+      </div>
+      {backups.length === 0 && (
+        <p className="muted drawer-pad">No backups yet — they run automatically while you write.</p>
+      )}
+      <ul className="backup-list">
+        {backups.slice(0, 12).map((b) => (
+          <li key={b.fileName}>
+            <div className="snapshot-meta">
+              <span className="snapshot-name">{new Date(b.createdAt).toLocaleString()}</span>
+              <span className="snapshot-sub">{size(b.sizeBytes)}</span>
+            </div>
+            <div className="snapshot-actions">
+              <button disabled={busy} onClick={() => restore(b)}>
+                Restore…
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

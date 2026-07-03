@@ -8,6 +8,13 @@ const api: FoolscapAPI = {
   onMenuCommand: (cb) => {
     ipcRenderer.on('menu-command', (_e, cmd: string) => cb(cmd))
   },
+  onFlushRequest: (cb) => {
+    ipcRenderer.on('app:flush', () => {
+      void Promise.resolve(cb())
+        .catch(() => undefined)
+        .then(() => ipcRenderer.send('app:flush-done'))
+    })
+  },
   onThesaurusReplace: (cb) => {
     const handler = (_e: unknown, synonym: string): void => cb(synonym)
     ipcRenderer.on('thesaurus:replace', handler)
@@ -21,6 +28,8 @@ const api: FoolscapAPI = {
     getRecentProjects: () => ipcRenderer.invoke('app:getRecentProjects'),
     removeRecentProject: (path) => ipcRenderer.invoke('app:removeRecentProject', path),
     pickNewProjectLocation: () => ipcRenderer.invoke('app:pickNewProjectLocation'),
+    openPath: (p) => ipcRenderer.invoke('app:openPath', p),
+    revealPath: (p) => ipcRenderer.invoke('app:revealPath', p),
     pickExistingProject: () => ipcRenderer.invoke('app:pickExistingProject')
   },
   project: {
@@ -65,7 +74,8 @@ const api: FoolscapAPI = {
   },
   backup: {
     runNow: () => ipcRenderer.invoke('backup:runNow'),
-    list: () => ipcRenderer.invoke('backup:list')
+    list: () => ipcRenderer.invoke('backup:list'),
+    restore: (fileName) => ipcRenderer.invoke('backup:restore', fileName)
   },
   window: {
     setFullScreen: (on) => ipcRenderer.invoke('window:setFullScreen', on),
@@ -135,7 +145,8 @@ const api: FoolscapAPI = {
       ipcRenderer.invoke('factcheck:linkSource', claimId, sourceId),
     unlinkSource: (claimId, sourceId) =>
       ipcRenderer.invoke('factcheck:unlinkSource', claimId, sourceId),
-    outstanding: () => ipcRenderer.invoke('factcheck:outstanding')
+    outstanding: () => ipcRenderer.invoke('factcheck:outstanding'),
+    counts: () => ipcRenderer.invoke('factcheck:counts')
   },
   compile: {
     docx: (req) => ipcRenderer.invoke('compile:docx', req),

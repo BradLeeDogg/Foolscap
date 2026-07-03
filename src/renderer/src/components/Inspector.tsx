@@ -1,6 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { MetaField, MetaFieldType, MetaValues } from '@shared/types'
 import { useStore } from '../store/useStore'
+import { pushUndo } from '../lib/undo'
+
+/** Persist an item field with its inverse on the undo stack. */
+function fieldEdit(
+  label: string,
+  apply: (v: string | null) => Promise<void> | void,
+  oldValue: string | null,
+  newValue: string | null
+): void {
+  if (oldValue === newValue) return
+  void apply(newValue)
+  pushUndo({
+    label,
+    undo: () => apply(oldValue),
+    redo: () => apply(newValue)
+  })
+}
 
 interface Props {
   onClose: () => void
@@ -50,8 +67,16 @@ export default function Inspector({ onClose }: Props): JSX.Element {
   }
 
   const setVal = (fieldId: string, value: string): void => {
-    setValues((v) => ({ ...v, [fieldId]: value }))
-    void window.api.metadata.setValue(item.id, fieldId, value)
+    const old = values[fieldId] ?? ''
+    fieldEdit(
+      `Metadata on “${item.title}”`,
+      (v) => {
+        setValues((prev) => ({ ...prev, [fieldId]: v ?? '' }))
+        void window.api.metadata.setValue(item.id, fieldId, v ?? '')
+      },
+      old,
+      value
+    )
   }
   const addField = async (): Promise<void> => {
     if (!newName.trim()) return
@@ -80,10 +105,17 @@ export default function Inspector({ onClose }: Props): JSX.Element {
           key={`${item.id}-syn`}
           defaultValue={item.synopsis}
           placeholder="One or two lines…"
-          onBlur={(e) => {
-            void window.api.binder.updateSynopsis(item.id, e.target.value)
-            patchItem(item.id, { synopsis: e.target.value })
-          }}
+          onBlur={(e) =>
+            fieldEdit(
+              `Synopsis of “${item.title}”`,
+              (v) => {
+                void window.api.binder.updateSynopsis(item.id, v ?? '')
+                patchItem(item.id, { synopsis: v ?? '' })
+              },
+              item.synopsis,
+              e.target.value
+            )
+          }
         />
       </div>
 
@@ -94,10 +126,17 @@ export default function Inspector({ onClose }: Props): JSX.Element {
           key={`${item.id}-notes`}
           defaultValue={item.notes}
           placeholder="Longer notes for this item…"
-          onBlur={(e) => {
-            void window.api.binder.updateNotes(item.id, e.target.value)
-            patchItem(item.id, { notes: e.target.value })
-          }}
+          onBlur={(e) =>
+            fieldEdit(
+              `Notes on “${item.title}”`,
+              (v) => {
+                void window.api.binder.updateNotes(item.id, v ?? '')
+                patchItem(item.id, { notes: v ?? '' })
+              },
+              item.notes,
+              e.target.value
+            )
+          }
         />
       </div>
 
@@ -106,11 +145,17 @@ export default function Inspector({ onClose }: Props): JSX.Element {
           <label className="insp-label">Label</label>
           <select
             value={item.labelId ?? ''}
-            onChange={(e) => {
-              const v = e.target.value || null
-              void window.api.binder.setLabel(item.id, v)
-              patchItem(item.id, { labelId: v })
-            }}
+            onChange={(e) =>
+              fieldEdit(
+                `Label of “${item.title}”`,
+                (v) => {
+                  void window.api.binder.setLabel(item.id, v)
+                  patchItem(item.id, { labelId: v })
+                },
+                item.labelId,
+                e.target.value || null
+              )
+            }
           >
             <option value="">—</option>
             {labelDefs.map((l) => (
@@ -124,11 +169,17 @@ export default function Inspector({ onClose }: Props): JSX.Element {
           <label className="insp-label">Status</label>
           <select
             value={item.statusId ?? ''}
-            onChange={(e) => {
-              const v = e.target.value || null
-              void window.api.binder.setStatus(item.id, v)
-              patchItem(item.id, { statusId: v })
-            }}
+            onChange={(e) =>
+              fieldEdit(
+                `Status of “${item.title}”`,
+                (v) => {
+                  void window.api.binder.setStatus(item.id, v)
+                  patchItem(item.id, { statusId: v })
+                },
+                item.statusId,
+                e.target.value || null
+              )
+            }
           >
             <option value="">—</option>
             {statuses.map((s) => (

@@ -9,7 +9,7 @@ import type { JSONContent } from '@tiptap/core'
 import type { DocumentContent, ManuscriptDefaults, ProseMirrorNode } from '@shared/types'
 import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 import { SCREENPLAY_ELEMENTS, SCREENPLAY_LABELS, type ScreenplayElement } from '@shared/screenplay'
-import { useStore } from '../store/useStore'
+import { registerFlusher, useStore } from '../store/useStore'
 import { Comment } from '../editor/comment'
 import { Footnote } from '../editor/footnote'
 import { Screenplay } from '../editor/screenplay'
@@ -149,6 +149,8 @@ export default function DocumentEditor({
   const oxfordComma = useStore((s) => s.meta?.settings.oxfordComma)
   const dirtyRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wordsAtLoadRef = useRef(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const debounceMs = meta?.settings.autosaveDebounceMs ?? 800
 
@@ -308,7 +310,7 @@ export default function DocumentEditor({
   }
 
   const save = async (): Promise<void> => {
-    if (!editor) return
+    if (!editor || editor.isDestroyed) return
     if (saveTimer.current) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
@@ -323,14 +325,41 @@ export default function DocumentEditor({
       setHasChanges(hasTrackedChanges(json as unknown as ProseMirrorNode))
       dirtyRef.current = false
       setItemWordCount(docId, res.wordCount) // keep project/session totals live
+      if (useStore.getState().saveError) useStore.getState().setSaveError(null)
+      if (retryTimer.current) {
+        clearTimeout(retryTimer.current)
+        retryTimer.current = null
+      }
       if (active) {
         setSaveState('saved', res.savedAt)
         setDocWordCount(res.wordCount)
       }
-    } catch {
+    } catch (e) {
+      // Loud, from ANY editor instance (stitched sections included): banner +
+      // automatic retry until the disk accepts the write.
       if (active) setSaveState('error')
+      useStore
+        .getState()
+        .setSaveError(e instanceof Error ? e.message : 'Could not write to disk')
+      if (!retryTimer.current) {
+        retryTimer.current = setTimeout(() => {
+          retryTimer.current = null
+          if (dirtyRef.current) void save()
+        }, 3000)
+      }
     }
   }
+
+  // Register with the flush registry so close/quit can drain pending saves
+  // before the project (and its DB) goes away.
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(() => {
+    if (!editor) return
+    return registerFlusher(`${docId}:${Math.random().toString(36).slice(2)}`, () =>
+      dirtyRef.current ? saveRef.current() : Promise.resolve()
+    )
+  }, [docId, editor])
 
   // Load on docId change; flush any pending save of the previous doc first.
   useEffect(() => {
@@ -350,6 +379,7 @@ export default function DocumentEditor({
       setHasChanges(content ? hasTrackedChanges(content.doc) : false)
       dirtyRef.current = false
       const words = editor.storage.characterCount.words()
+      wordsAtLoadRef.current = words
       onWords?.(words)
       if (active) {
         setDocWordCount(words)
@@ -361,6 +391,14 @@ export default function DocumentEditor({
       cancelled = true
       if (saveTimer.current) clearTimeout(saveTimer.current)
       if (dirtyRef.current) void save()
+      // The per-visit ProseMirror history dies with this mount; if the visit
+      // changed a lot, keep an automatic snapshot so recovery stays one click.
+      if (editor && !editor.isDestroyed) {
+        const now = editor.storage.characterCount.words()
+        if (Math.abs(now - wordsAtLoadRef.current) > 200) {
+          void window.api.snapshot.create(docId, 'Auto (before switching away)')
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, editor, docReloadToken])

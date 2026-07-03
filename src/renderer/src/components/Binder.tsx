@@ -21,6 +21,7 @@ import type { BinderItem } from '@shared/types'
 import { useStore } from '../store/useStore'
 import { flattenVisible, getProjection, toMove, INDENT_WIDTH, type FlatNode } from '../lib/tree'
 import { onCommand, runCommand } from '../lib/commands'
+import { pushUndo } from '../lib/undo'
 
 const BASE_PAD = 8
 
@@ -40,6 +41,35 @@ export default function Binder(): JSX.Element {
   const selectedId = useStore((s) => s.selectedId)
   const select = useStore((s) => s.select)
   const setTree = useStore((s) => s.setTree)
+  const showToast = useStore((s) => s.showToast)
+
+  /** Where an item currently sits (for the undo side of a move). */
+  const placeOf = (id: string): { parentId: string | null; index: number } | null => {
+    const item = tree.find((t) => t.id === id)
+    if (!item) return null
+    const sibs = tree
+      .filter((t) => t.parentId === item.parentId)
+      .sort((a, b) => a.position - b.position)
+    return { parentId: item.parentId, index: sibs.findIndex((s) => s.id === id) }
+  }
+
+  /** Run a binder move and push its inverse onto the undo stack. */
+  const moveWithUndo = async (
+    id: string,
+    newParentId: string | null,
+    newIndex: number
+  ): Promise<void> => {
+    const before = placeOf(id)
+    const title = tree.find((t) => t.id === id)?.title ?? 'item'
+    setTree(await window.api.binder.move({ id, newParentId, newIndex }))
+    if (!before) return
+    pushUndo({
+      label: `Move “${title}”`,
+      undo: async () =>
+        setTree(await window.api.binder.move({ id, newParentId: before.parentId, newIndex: before.index })),
+      redo: async () => setTree(await window.api.binder.move({ id, newParentId, newIndex }))
+    })
+  }
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
@@ -145,21 +175,33 @@ export default function Binder(): JSX.Element {
     }
   }
 
+  // Trash is undoable (restore keeps files), so no confirm — a toast with the
+  // Ctrl+Z hint replaces the dialog.
   const removeItem = async (item: BinderItem): Promise<void> => {
-    const ok = window.confirm(
-      `Move “${item.title}”${item.type === 'folder' ? ' and everything inside it' : ''} to the Trash?`
-    )
-    if (!ok) return
     const next = await window.api.binder.remove(item.id)
     setTree(next)
     if (selectedId === item.id) select(null)
+    pushUndo({
+      label: `Trash “${item.title}”`,
+      undo: async () => setTree(await window.api.binder.restore(item.id)),
+      redo: async () => setTree(await window.api.binder.remove(item.id))
+    })
+    showToast(`Moved “${item.title}” to the Trash — Ctrl+Z to undo`)
   }
 
   const commitRename = async (id: string, title: string): Promise<void> => {
     setRenamingId(null)
     const trimmed = title.trim()
     if (!trimmed) return
+    const old = tree.find((t) => t.id === id)?.title
     setTree(await window.api.binder.rename(id, trimmed))
+    if (old && old !== trimmed) {
+      pushUndo({
+        label: `Rename “${old}”`,
+        undo: async () => setTree(await window.api.binder.rename(id, old)),
+        redo: async () => setTree(await window.api.binder.rename(id, trimmed))
+      })
+    }
   }
 
   const toggleCollapse = async (item: FlatNode): Promise<void> => {
@@ -190,7 +232,7 @@ export default function Binder(): JSX.Element {
     const cur = sibs.findIndex((s) => s.id === item.id)
     const target = dir === 'up' ? cur - 1 : cur + 1
     if (target < 0 || target >= sibs.length) return
-    setTree(await window.api.binder.move({ id: item.id, newParentId: item.parentId, newIndex: target }))
+    await moveWithUndo(item.id, item.parentId, target)
   }
 
   const onTreeKeyDown = (e: React.KeyboardEvent): void => {
@@ -256,7 +298,7 @@ export default function Binder(): JSX.Element {
     resetDrag()
     if (!o || !proj) return
     const { newParentId, newIndex } = toMove(flattened, a, o, proj.parentId)
-    setTree(await window.api.binder.move({ id: a, newParentId, newIndex }))
+    await moveWithUndo(a, newParentId, newIndex)
   }
 
   return (

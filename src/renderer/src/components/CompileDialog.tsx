@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CompileEntry, CompilePreset, CompilePresetId, Source } from '@shared/types'
 import { COMPILE_PRESETS, defaultPresetFor } from '@shared/presets'
 import { BIBLIOGRAPHY_HEADINGS } from '@shared/citations'
+import { runCommand } from '../lib/commands'
 import { useStore } from '../store/useStore'
 import { childrenOf, descendantDocuments } from '../lib/tree'
 
@@ -90,8 +91,19 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
       setSources(list)
       setBibMode(list.length ? 'sources' : citationDoc ? 'document' : 'none')
     })
+    void window.api.factcheck.counts().then(setFactCounts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Fact-check gate: the one moment the outstanding count matters is export.
+  const [factCounts, setFactCounts] = useState<{
+    total: number
+    verified: number
+    needsSourcing: number
+    disputed: number
+  } | null>(null)
+  // The last successful export, for one-click Open / Show in folder.
+  const [lastExport, setLastExport] = useState<string | null>(null)
 
   const entries = useMemo(() => {
     let base = buildEntries(tree, rootId)
@@ -116,58 +128,37 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
     bibliography: bibMode === 'sources' && sources.length ? { style: bibStyle, sources } : null
   })
 
-  const exportDocx = async (): Promise<void> => {
+  const runExport = async (
+    label: string,
+    fn: () => Promise<{ path: string | null; note?: string }>
+  ): Promise<void> => {
     setBusy(true)
-    setStatus('Compiling DOCX…')
+    setStatus(`Compiling ${label}…`)
+    setLastExport(null)
     try {
+      const { path, note } = await fn()
+      setStatus(path ? `Exported ${path}${note ?? ''}` : null)
+      setLastExport(path)
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const exportDocx = (): Promise<void> =>
+    runExport('DOCX', async () => {
       const res = await window.api.compile.docx(request())
-      if (!res) setStatus(null)
-      else setStatus(`Exported ${res.docxPath}${res.packetPath ? ' (+ fact-check packet)' : ''}`)
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Export failed')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const exportPdf = async (): Promise<void> => {
-    setBusy(true)
-    setStatus('Compiling PDF…')
-    try {
-      const res = await window.api.compile.pdf(request())
-      setStatus(res ? `Exported ${res.pdfPath}` : null)
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Export failed')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const exportEpub = async (): Promise<void> => {
-    setBusy(true)
-    setStatus('Compiling ePub…')
-    try {
-      const res = await window.api.compile.epub(request())
-      setStatus(res ? `Exported ${res.epubPath}` : null)
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Export failed')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const exportPlain = async (kind: 'markdown' | 'text'): Promise<void> => {
-    setBusy(true)
-    setStatus(`Exporting ${kind === 'markdown' ? 'Markdown' : 'plain text'}…`)
-    try {
-      const res = await window.api.compile[kind](request())
-      setStatus(res ? `Exported ${res.path}` : null)
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : 'Export failed')
-    } finally {
-      setBusy(false)
-    }
-  }
+      return { path: res?.docxPath ?? null, note: res?.packetPath ? ' (+ fact-check packet)' : '' }
+    })
+  const exportPdf = (): Promise<void> =>
+    runExport('PDF', async () => ({ path: (await window.api.compile.pdf(request()))?.pdfPath ?? null }))
+  const exportEpub = (): Promise<void> =>
+    runExport('ePub', async () => ({ path: (await window.api.compile.epub(request()))?.epubPath ?? null }))
+  const exportPlain = (kind: 'markdown' | 'text'): Promise<void> =>
+    runExport(kind === 'markdown' ? 'Markdown' : 'plain text', async () => ({
+      path: (await window.api.compile[kind](request()))?.path ?? null
+    }))
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -243,10 +234,12 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
                   onChange={(e) => patch({ firstLineIndentInches: Number(e.target.value) || 0 })}
                 />
               </label>
-              <label>
-                Scene break
-                <input value={preset.sceneBreak} onChange={(e) => patch({ sceneBreak: e.target.value })} />
-              </label>
+              {(COMPILE_PRESETS[presetId].sceneBreak !== '' || preset.sceneBreak !== '') && (
+                <label>
+                  Scene break
+                  <input value={preset.sceneBreak} onChange={(e) => patch({ sceneBreak: e.target.value })} />
+                </label>
+              )}
               <label className="compile-check">
                 <input
                   type="checkbox"
@@ -284,14 +277,18 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
               Author
               <input value={author} onChange={(e) => setAuthor(e.target.value)} />
             </label>
-            <label className="compile-stack">
-              Contact (for title page)
-              <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={3} />
-            </label>
-            <label className="compile-stack">
-              Running-header keyword
-              <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
-            </label>
+            {preset.titlePage && (
+              <label className="compile-stack">
+                Contact (for title page)
+                <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={3} />
+              </label>
+            )}
+            {preset.runningHeader && (
+              <label className="compile-stack">
+                Running-header keyword
+                <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+              </label>
+            )}
             {preset.bylineDateline && (
               <>
                 <label className="compile-stack">
@@ -330,8 +327,36 @@ export default function CompileDialog({ onClose }: Props): JSX.Element {
           </section>
         </div>
 
+        {factCounts && factCounts.total > 0 && (
+          <div className={`compile-factline ${factCounts.verified === factCounts.total ? 'ok' : 'warn'}`}>
+            {factCounts.verified === factCounts.total ? (
+              <>✓ All {factCounts.total} claims verified</>
+            ) : (
+              <>
+                ⚠ {factCounts.total - factCounts.verified} of {factCounts.total} claims outstanding (
+                {factCounts.needsSourcing} need sourcing, {factCounts.disputed} disputed)
+                <button
+                  className="link"
+                  onClick={() => {
+                    onClose()
+                    runCommand('panel-factcheck')
+                  }}
+                >
+                  View
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="modal-foot">
           {status && <span className="compile-status muted">{status}</span>}
+          {lastExport && (
+            <>
+              <button onClick={() => void window.api.app.openPath(lastExport)}>Open</button>
+              <button onClick={() => void window.api.app.revealPath(lastExport)}>Show in folder</button>
+            </>
+          )}
           <span className="spacer" />
           <button onClick={onClose}>Close</button>
           <button disabled={busy || docCount === 0} onClick={() => exportPlain('text')}>

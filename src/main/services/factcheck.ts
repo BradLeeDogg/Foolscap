@@ -127,6 +127,26 @@ export function listOutstanding(db: DB): ClaimWithSources[] {
     .filter((c) => c.status !== 'verified' || c.sources.length === 0 || c.needsQuoteCheck)
 }
 
+export interface ClaimCounts {
+  total: number
+  verified: number
+  needsSourcing: number
+  disputed: number
+}
+
+/** Project-wide claim tallies (for the compile-time fact-check gate). */
+export function claimCounts(db: DB): ClaimCounts {
+  const rows = db.prepare('SELECT status, COUNT(*) AS n FROM claims GROUP BY status').all() as Array<{
+    status: string
+    n: number
+  }>
+  const by = new Map(rows.map((r) => [r.status, r.n]))
+  const verified = by.get('verified') ?? 0
+  const needsSourcing = by.get('needs-sourcing') ?? 0
+  const disputed = by.get('disputed') ?? 0
+  return { total: verified + needsSourcing + disputed, verified, needsSourcing, disputed }
+}
+
 export interface PacketDocument {
   docId: string
   claims: ClaimWithSources[]

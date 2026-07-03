@@ -187,6 +187,8 @@ export interface BinderMoveInput {
 export interface FoolscapAPI {
   /** Subscribe to native-menu commands (forwarded to the renderer command bus). */
   onMenuCommand(cb: (cmd: string) => void): void
+  /** Main asks the renderer to flush pending autosaves before close/quit. */
+  onFlushRequest(cb: () => Promise<void>): void
   /** Replace the current editor selection with a synonym chosen from the
    *  right-click thesaurus menu. Returns an unsubscribe function. */
   onThesaurusReplace(cb: (synonym: string) => void): () => void
@@ -199,6 +201,10 @@ export interface FoolscapAPI {
     getRecentProjects(): Promise<RecentProject[]>
     removeRecentProject(path: string): Promise<RecentProject[]>
     pickNewProjectLocation(): Promise<string | null>
+    /** Open an exported file in its default app. */
+    openPath(p: string): Promise<string>
+    /** Reveal an exported file in the OS file manager. */
+    revealPath(p: string): Promise<void>
     pickExistingProject(): Promise<string | null>
   }
   project: {
@@ -252,6 +258,9 @@ export interface FoolscapAPI {
   backup: {
     runNow(): Promise<BackupInfo>
     list(): Promise<BackupInfo[]>
+    /** Restore a backup zip into a NEW sibling project folder and open it.
+     *  Never overwrites the current project. */
+    restore(fileName: string): Promise<OpenProjectResult>
   }
   window: {
     /** Toggle borderless full-screen (composition mode). Returns the new state. */
@@ -342,6 +351,8 @@ export interface FoolscapAPI {
     linkSource(claimId: string, sourceId: string): Promise<void>
     unlinkSource(claimId: string, sourceId: string): Promise<void>
     outstanding(): Promise<ClaimWithSources[]>
+    /** Project-wide claim tallies (compile-time gate). */
+    counts(): Promise<{ total: number; verified: number; needsSourcing: number; disputed: number }>
   }
   compile: {
     /** Build a manuscript .docx (save dialog). Returns paths, or null if cancelled. */

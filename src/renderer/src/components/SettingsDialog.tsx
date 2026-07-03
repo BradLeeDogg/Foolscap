@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ProjectSettings } from '@shared/types'
 import { OVERLAYS_BY_TYPE, OVERLAY_LABELS, type StructureOverlay } from '@shared/api'
 import { useStore } from '../store/useStore'
@@ -6,6 +6,21 @@ import { playKeyClick } from '../lib/typewriter'
 
 interface Props {
   onClose: () => void
+}
+
+/** "Last backup 12m ago · restore from the Snapshots panel." */
+function LastBackupNote(): JSX.Element | null {
+  const [note, setNote] = useState<string | null>(null)
+  useEffect(() => {
+    void window.api.backup.list().then((list) => {
+      if (!list.length) return setNote('No backups yet — they run automatically while you write.')
+      const mins = Math.max(0, Math.round((Date.now() - list[0]!.createdAt) / 60000))
+      setNote(
+        `Last backup ${mins === 0 ? 'moments' : `${mins} min`} ago (${list.length} kept) · restore from the Snapshots panel.`
+      )
+    })
+  }, [])
+  return note ? <p className="muted settings-backup-note">{note}</p> : null
 }
 
 /** Adjust the working manuscript defaults + behavior. Output presets are separate. */
@@ -158,6 +173,7 @@ export default function SettingsDialog({ onClose }: Props): JSX.Element {
               />
             </label>
           </div>
+          <LastBackupNote />
 
           {overlaysForType.length > 0 && (
             <>

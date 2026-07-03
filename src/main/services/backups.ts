@@ -1,5 +1,5 @@
 import { createWriteStream, promises as fs } from 'fs'
-import { basename, join } from 'path'
+import { basename, dirname, join } from 'path'
 import archiver from 'archiver'
 import type { BackupInfo } from '@shared/types'
 import type { DB } from './db'
@@ -64,6 +64,36 @@ export async function listBackups(root: string): Promise<BackupInfo[]> {
     infos.push({ fileName: name, path: p, createdAt: stat.mtimeMs, sizeBytes: stat.size })
   }
   return infos.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/**
+ * Restore a backup zip into a NEW sibling `.writeproject` folder (never in
+ * place) and return its path: `<Name> (restored 2026-07-02 1530).writeproject`.
+ */
+export async function restoreBackup(root: string, fileName: string): Promise<string> {
+  const paths = projectPaths(root)
+  const zipPath = join(paths.backups, basename(fileName)) // basename: no traversal
+  await fs.access(zipPath)
+
+  const d = new Date()
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}`
+  const base = basename(root).replace(/\.writeproject$/i, '')
+  const parent = dirname(root)
+  let target = join(parent, `${base} (restored ${stamp}).writeproject`)
+  for (let i = 2; ; i++) {
+    try {
+      await fs.access(target)
+      target = join(parent, `${base} (restored ${stamp} ${i}).writeproject`)
+    } catch {
+      break
+    }
+  }
+
+  const { default: extract } = await import('extract-zip')
+  await fs.mkdir(target, { recursive: true })
+  await extract(zipPath, { dir: target })
+  return target
 }
 
 /** Keep the newest `keep` backups; delete the rest. */

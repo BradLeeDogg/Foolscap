@@ -7,7 +7,7 @@ import { createItem, createItemFull, listBinder, moveItem, removeItem, setNotes 
 import * as meta from './services/metadata'
 import { countWords, docFromParagraphs, emptyDoc, readDocument, writeDocument, type BodyLine } from './services/documents'
 import { createSnapshot, listSnapshots, restoreSnapshot } from './services/snapshots'
-import { createBackup } from './services/backups'
+import { createBackup, restoreBackup } from './services/backups'
 import { applyReplace, previewReplace, searchProject } from './services/search'
 import { createCollection, listCollections, removeCollection } from './services/collections'
 import { createSource, extractReadable, listSources, updateSource } from './services/sources'
@@ -338,6 +338,17 @@ async function runChecks(): Promise<void> {
 
   const info = await createBackup(paths.root, db)
   assert(existsSync(info.path) && info.sizeBytes > 0, 'backup zip written')
+  {
+    // Restore lands in a NEW sibling folder with a working DB; original untouched.
+    const restoredRoot = await restoreBackup(paths.root, info.fileName)
+    assert(
+      restoredRoot !== paths.root &&
+        existsSync(join(restoredRoot, 'project.db')) &&
+        existsSync(paths.db),
+      'backup restores into a fresh sibling project (original untouched)'
+    )
+    await fs.rm(restoredRoot, { recursive: true, force: true })
+  }
 
   const hits = await searchProject(db, paths.root, { text: 'foolscap' })
   assert(hits.some((h) => h.itemId === doc.id && h.matches >= 1), 'full-text search finds a match')

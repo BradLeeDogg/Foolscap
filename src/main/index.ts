@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, Menu, MenuItem, type MenuItemConstructorOptions } from 'electron'
+import { app, ipcMain, shell, BrowserWindow, Menu, MenuItem, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpc } from './ipc'
@@ -92,6 +92,25 @@ function createWindow(): BrowserWindow {
       plugins: true, // Chromium's built-in PDF viewer (Research viewer)
       autoplayPolicy: 'no-user-gesture-required' // let the typewriter AudioContext run
     }
+  })
+
+  // Quit/close handshake: hold the window open just long enough for the
+  // renderer to flush pending autosaves (data safety over speed; 2s cap so a
+  // hung renderer can never trap the user).
+  let flushDone = false
+  window.on('close', (e) => {
+    if (flushDone || window.webContents.isDestroyed()) return
+    e.preventDefault()
+    const finish = (): void => {
+      if (flushDone) return
+      flushDone = true
+      clearTimeout(timer)
+      ipcMain.removeListener('app:flush-done', finish)
+      window.destroy()
+    }
+    const timer = setTimeout(finish, 2000)
+    ipcMain.once('app:flush-done', finish)
+    window.webContents.send('app:flush')
   })
 
   // American-English spell check by default, with a suggestions context menu.

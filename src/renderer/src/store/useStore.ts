@@ -1,10 +1,27 @@
 import { create } from 'zustand'
+import { clearUndo } from '../lib/undo'
 import type { BinderItem, ProjectMeta } from '@shared/types'
 import type { LabelDef, OpenProjectResult } from '@shared/api'
 import type { DocIssue } from '@shared/proofreader'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 export type FolderView = 'scrivenings' | 'corkboard' | 'outliner'
+
+// --- dirty-editor flush registry (module-level; not reactive state) ----------
+// Every mounted editor registers a flusher; close/quit paths await them all so
+// the last debounce-window of typing is never lost.
+const flushers = new Map<string, () => Promise<void>>()
+
+/** Register an editor's flush function; returns its unregister. */
+export function registerFlusher(key: string, fn: () => Promise<void>): () => void {
+  flushers.set(key, fn)
+  return () => flushers.delete(key)
+}
+
+/** Flush every mounted editor's pending save (no-ops when clean). */
+export async function flushAllDirty(): Promise<void> {
+  await Promise.allSettled([...flushers.values()].map((fn) => fn()))
+}
 
 interface AppState {
   meta: ProjectMeta | null
@@ -14,6 +31,12 @@ interface AppState {
 
   saveState: SaveState
   lastSavedAt: number | null
+  /** Non-null while any editor (active or stitched) is failing to write to disk. */
+  saveError: string | null
+  setSaveError: (msg: string | null) => void
+  /** Transient toast (auto-fades). Used for undo hints, import summaries, etc. */
+  toast: string | null
+  showToast: (msg: string) => void
   docWordCount: number
   selectionWordCount: number
 
@@ -101,6 +124,17 @@ export const useStore = create<AppState>((set) => ({
   selectedId: null,
   saveState: 'idle',
   lastSavedAt: null,
+  saveError: null,
+  setSaveError: (msg) => set({ saveError: msg }),
+  toast: null,
+  showToast: (() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    return (msg: string) => {
+      set({ toast: msg })
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => set({ toast: null }), 4000)
+    }
+  })(),
   docWordCount: 0,
   selectionWordCount: 0,
   inserter: null,
@@ -117,7 +151,8 @@ export const useStore = create<AppState>((set) => ({
   sessionStartWords: 0,
   folderView: 'scrivenings',
 
-  openResult: (result) =>
+  openResult: (result) => {
+    clearUndo() // structural undo must not cross project boundaries
     set({
       meta: result.meta,
       tree: result.tree,
@@ -131,7 +166,8 @@ export const useStore = create<AppState>((set) => ({
       composition: false,
       sessionStartWords: totalWords(result.tree),
       folderView: 'scrivenings'
-    }),
+    })
+  },
   closeProject: () =>
     set({
       meta: null,
