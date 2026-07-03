@@ -129,9 +129,21 @@ export default function Workspace(): JSX.Element {
   }
   const panelSettersRef = useRef(panelSetters)
   panelSettersRef.current = panelSetters
+  // The right-hand "item detail" panels share one slot — opening one closes the
+  // others so the editor is never crushed by a stack (the calm ethos). Find is
+  // the search tool and may coexist.
+  const EXCLUSIVE = ['inspector', 'sources', 'factcheck', 'snapshots', 'transcripts', 'proofread', 'analysis', 'targets']
   const togglePanel = (key: string, force?: boolean): void => {
     const [open, set] = panelSettersRef.current[key]!
     const next = force ?? !open
+    if (next && EXCLUSIVE.includes(key)) {
+      for (const other of EXCLUSIVE) {
+        if (other !== key && panelSettersRef.current[other]?.[0]) {
+          panelSettersRef.current[other][1](false)
+          panelStack.current = panelStack.current.filter((k) => k !== other)
+        }
+      }
+    }
     set(next)
     panelStack.current = panelStack.current.filter((k) => k !== key)
     if (next) panelStack.current.push(key)

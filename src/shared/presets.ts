@@ -21,6 +21,24 @@ export const COMPILE_PRESETS: Record<CompilePresetId, CompilePreset> = {
     bylineDateline: false,
     chapterHeadings: true
   },
+  // Shunn SHORT-story variant: no separate title page — contact + word count +
+  // centered title on page one, the story following on the same page.
+  'shunn-short': {
+    id: 'shunn-short',
+    name: 'Short Story (Shunn)',
+    font: 'Times New Roman',
+    fontSizePt: 12,
+    lineSpacing: 2,
+    marginInches: 1,
+    pageSize: 'us-letter',
+    firstLineIndentInches: 0.5,
+    titlePage: true,
+    titleOnFirstPage: true,
+    runningHeader: true,
+    sceneBreak: '#',
+    bylineDateline: false,
+    chapterHeadings: false
+  },
   'nonfiction-proposal': {
     id: 'nonfiction-proposal',
     name: 'Nonfiction Book Proposal',
@@ -155,6 +173,8 @@ export function defaultPresetFor(type: ProjectType): CompilePresetId {
       return 'apa'
     case 'thesis':
       return 'chicago'
+    case 'short-story':
+      return 'shunn-short'
     default:
       return 'shunn'
   }

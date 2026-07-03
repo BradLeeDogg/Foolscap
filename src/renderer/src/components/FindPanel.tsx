@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Collection, CollectionCriteria, MetaField, SearchResult } from '@shared/types'
 import { useStore } from '../store/useStore'
+import { confirmSheet, promptSheet } from './Sheets'
 
 interface Props {
   onClose: () => void
@@ -54,9 +55,9 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
   }
 
   const saveCollection = async (): Promise<void> => {
-    const name = window.prompt('Name this collection:')
-    if (!name || !name.trim()) return
-    await window.api.collection.create(name.trim(), criteria())
+    const name = await promptSheet({ title: 'Name this collection', placeholder: 'e.g. POV — Mara', confirmLabel: 'Save' })
+    if (!name) return
+    await window.api.collection.create(name, criteria())
     refreshCollections()
   }
 
@@ -92,12 +93,12 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
   const applyReplace = async (): Promise<void> => {
     const ids = preview.filter((p) => picked.has(p.itemId)).map((p) => p.itemId)
     if (!ids.length) return
-    if (
-      !window.confirm(
-        `Replace “${text}” with “${replaceWith}” in ${ids.length} document${ids.length === 1 ? '' : 's'}? A snapshot of each is taken first.`
-      )
-    )
-      return
+    const ok = await confirmSheet({
+      title: `Replace in ${ids.length} document${ids.length === 1 ? '' : 's'}?`,
+      body: `“${text}” → “${replaceWith}”. A snapshot of each document is taken first, so this is reversible.`,
+      confirmLabel: 'Replace all'
+    })
+    if (!ok) return
     setRepBusy(true)
     try {
       await flushActive?.()

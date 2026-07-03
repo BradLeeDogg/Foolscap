@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ClaimStatus, ClaimWithSources, Source } from '@shared/types'
 import { useStore } from '../store/useStore'
 import SourcePicker from './SourcePicker'
+import { pushUndo } from '../lib/undo'
 
 interface Props {
   onClose: () => void
@@ -18,6 +19,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
   const tree = useStore((s) => s.tree)
   const selectedId = useStore((s) => s.selectedId)
   const select = useStore((s) => s.select)
+  const showToast = useStore((s) => s.showToast)
   const item = tree.find((t) => t.id === selectedId) ?? null
   const isDoc = item?.type === 'document'
 
@@ -26,6 +28,8 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
   const [outstanding, setOutstanding] = useState<ClaimWithSources[]>([])
   const [showOutstanding, setShowOutstanding] = useState(false)
   const [newText, setNewText] = useState('')
+  const [filter, setFilter] = useState<'all' | ClaimStatus>('all')
+  const shownClaims = filter === 'all' ? claims : claims.filter((c) => c.status === filter)
 
   const titleOf = (docId: string): string => tree.find((t) => t.id === docId)?.title ?? '—'
 
@@ -61,9 +65,24 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
     await window.api.factcheck.updateClaim(c.id, { needsQuoteCheck: !c.needsQuoteCheck })
     afterChange()
   }
-  const removeClaim = async (id: string): Promise<void> => {
-    await window.api.factcheck.removeClaim(id)
+  const removeClaim = async (c: ClaimWithSources): Promise<void> => {
+    await window.api.factcheck.removeClaim(c.id)
     afterChange()
+    // Deletion is recoverable via undo instead of interrupting with a confirm.
+    pushUndo({
+      label: 'Delete claim',
+      undo: async () => {
+        const created = await window.api.factcheck.createClaim(c.docId, c.text)
+        await window.api.factcheck.updateClaim(created.id, {
+          status: c.status,
+          needsQuoteCheck: c.needsQuoteCheck
+        })
+        for (const s of c.sources) await window.api.factcheck.linkSource(created.id, s.id)
+        afterChange()
+      },
+      redo: () => afterChange()
+    })
+    showToast('Claim deleted — Ctrl+Z to undo')
   }
   const link = async (claimId: string, sourceId: string): Promise<void> => {
     if (!sourceId) return
@@ -118,9 +137,25 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
             </button>
           </div>
 
+          <div className="fc-filters drawer-pad">
+            {(['all', 'needs-sourcing', 'disputed', 'verified'] as const).map((f) => (
+              <button
+                key={f}
+                className={`fc-chip ${filter === f ? 'on' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'all' ? 'All' : f === 'needs-sourcing' ? 'Needs' : f === 'disputed' ? 'Disputed' : 'Verified'}
+                {f !== 'all' && ` · ${claims.filter((c) => c.status === f).length}`}
+              </button>
+            ))}
+          </div>
+
           <ul className="fc-claims">
             {claims.length === 0 && <li className="muted drawer-pad">No claims logged yet.</li>}
-            {claims.map((c) => (
+            {shownClaims.length === 0 && claims.length > 0 && (
+              <li className="muted drawer-pad">None match this filter.</li>
+            )}
+            {shownClaims.map((c) => (
               <li className="fc-claim" key={c.id}>
                 <div className="fc-claim-text">{c.text}</div>
                 <div className="fc-claim-controls">
@@ -143,7 +178,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
                     />
                     check vs. audio
                   </label>
-                  <button className="recent-remove" aria-label="Delete claim" onClick={() => removeClaim(c.id)}>
+                  <button className="recent-remove" aria-label="Delete claim" onClick={() => removeClaim(c)}>
                     ×
                   </button>
                 </div>

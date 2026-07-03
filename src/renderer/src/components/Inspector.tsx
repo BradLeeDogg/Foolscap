@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { MetaField, MetaFieldType, MetaValues } from '@shared/types'
 import { useStore } from '../store/useStore'
 import { pushUndo } from '../lib/undo'
+import { confirmSheet } from './Sheets'
 
 /** Persist an item field with its inverse on the undo stack. */
 function fieldEdit(
@@ -86,7 +87,13 @@ export default function Inspector({ onClose }: Props): JSX.Element {
     loadFields()
   }
   const removeField = async (id: string): Promise<void> => {
-    if (!window.confirm('Remove this field (and its values) from the whole project?')) return
+    const ok = await confirmSheet({
+      title: 'Remove this field?',
+      body: 'It and all its values are removed from every item in the project. This can’t be undone.',
+      confirmLabel: 'Remove field',
+      danger: true
+    })
+    if (!ok) return
     setFields(await window.api.metadata.removeField(id))
   }
 

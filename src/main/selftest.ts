@@ -513,6 +513,21 @@ async function runChecks(): Promise<void> {
     'compiled export excludes deletion-marked text'
   )
 
+  // Shunn short-story preset: title block on page one (no separate title page).
+  const shortReq = {
+    entries: [{ docId: 'tc-export-test' }],
+    preset: COMPILE_PRESETS['shunn-short'],
+    meta: { title: 'A Short Story', author: 'Jane Doe', contact: 'Jane Doe\n123 St', keyword: '', byline: '', dateline: '' },
+    includeFactCheck: false
+  }
+  const shortHtml = await compileToHtml(paths.root, shortReq)
+  assert(
+    shortHtml.includes('title-first') && shortHtml.includes('A SHORT STORY'),
+    'shunn-short keeps the title block on page one'
+  )
+  const shortDocx = await compileToDocxBuffer(paths.root, shortReq)
+  assert(shortDocx.length > 0 && shortDocx[0] === 0x50, 'shunn-short compiles a valid .docx')
+
   // Block formatting (alignment + no-indent) carries through compile.
   await writeDocument(paths.root, 'align-export-test', {
     version: DOCUMENT_CONTENT_VERSION,

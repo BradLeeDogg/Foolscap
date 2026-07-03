@@ -352,6 +352,61 @@ fieldset.field {
   font-size: 0.8rem;
 }
 
+/* In-app prompt/confirm sheets (replace window.prompt/confirm). */
+.sheet {
+  width: min(440px, 92vw);
+  margin: 12vh auto 0;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.2rem;
+}
+.sheet-title {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+.sheet-input {
+  width: 100%;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.6rem;
+}
+.sheet-body {
+  margin: 0 0 0.8rem;
+  line-height: 1.5;
+}
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.sheet-actions .danger.primary {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* Fact-check status filter chips. */
+.fc-filters {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+.fc-chip {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+}
+.fc-chip.on {
+  background: var(--ink);
+  color: var(--card);
+  border-color: var(--ink);
+}
+
 /* Outliner metadata-column menu. */
 .ol-toolbar {
   display: flex;

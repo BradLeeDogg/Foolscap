@@ -234,6 +234,7 @@ export type MetaValues = Record<string, string>
 
 export type CompilePresetId =
   | 'shunn'
+  | 'shunn-short'
   | 'nonfiction-proposal'
   | 'journalism'
   | 'dissertation'
@@ -257,6 +258,9 @@ export interface CompilePreset {
   sceneBreak: string
   bylineDateline: boolean
   chapterHeadings: boolean
+  /** Shunn short-story layout: the title block sits atop page one and the story
+   *  follows on the same page (no separate title page / page break). */
+  titleOnFirstPage?: boolean
 }
 
 /** Front-matter / identifying info supplied at compile time (never stored in prose). */

@@ -246,17 +246,39 @@ function bibliographyDocx(req: CompileRequest, preset: CompilePreset): Paragraph
 function buildTitlePage(req: CompileRequest, roundedWords: number, preset: CompilePreset): Paragraph[] {
   const { meta } = req
   const paras: Paragraph[] = []
-  for (const line of meta.contact.split('\n')) paras.push(new Paragraph({ children: [new TextRun(line)] }))
-  paras.push(
-    new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      children: [new TextRun(`about ${roundedWords.toLocaleString()} words`)]
-    })
+  const contact = meta.contact.split('\n')
+  // Contact block top-left; word count on the first line, right-aligned.
+  contact.forEach((line, i) =>
+    paras.push(
+      i === 0
+        ? new Paragraph({
+            children: [
+              new TextRun(line),
+              new TextRun({ text: `\tabout ${roundedWords.toLocaleString()} words`, break: 0 })
+            ]
+          })
+        : new Paragraph({ children: [new TextRun(line)] })
+    )
   )
-  for (let i = 0; i < 10; i++) paras.push(new Paragraph({ children: [new TextRun('')] }))
+  if (!contact.length) {
+    paras.push(
+      new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [new TextRun(`about ${roundedWords.toLocaleString()} words`)]
+      })
+    )
+  }
+  // Short story: title ~1/3 down, then story on the same page. Novel: centered
+  // title on its own page, story after a page break.
+  const gap = preset.titleOnFirstPage ? 8 : 10
+  for (let i = 0; i < gap; i++) paras.push(new Paragraph({ children: [new TextRun('')] }))
   paras.push(center(meta.title.toUpperCase(), preset))
   if (meta.author) paras.push(center(`by ${meta.author}`, preset))
-  paras.push(new Paragraph({ children: [new PageBreak()] }))
+  paras.push(
+    preset.titleOnFirstPage
+      ? new Paragraph({ children: [new TextRun('')] })
+      : new Paragraph({ children: [new PageBreak()] })
+  )
   return paras
 }
 
@@ -468,7 +490,9 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
 
   let body = ''
   if (preset.titlePage) {
-    body += `<div class="title-page"><div class="contact">${esc(meta.contact).replace(/\n/g, '<br>')}</div>`
+    // Short-story variant keeps the title block on page one (no page break).
+    const cls = preset.titleOnFirstPage ? 'title-page title-first' : 'title-page'
+    body += `<div class="${cls}"><div class="contact">${esc(meta.contact).replace(/\n/g, '<br>')}</div>`
     body += `<div class="wc">about ${roundedWords.toLocaleString()} words</div>`
     body += `<div class="title">${esc(meta.title.toUpperCase())}</div>`
     if (meta.author) body += `<div class="byauthor">by ${esc(meta.author)}</div></div>`
@@ -526,6 +550,8 @@ export async function compileToHtml(root: string, req: CompileRequest): Promise<
     blockquote { margin: 0 0 0 0.5in; }
     .scene-break { text-align: center; }
     .title-page { height: 9in; page-break-after: always; position: relative; }
+    .title-page.title-first { height: auto; page-break-after: auto; margin-bottom: 1.5in; }
+    .title-page.title-first .title { margin-top: 2.5in; }
     .title-page .contact { white-space: pre-line; }
     .title-page .wc { position: absolute; top: 0; right: 0; }
     .title-page .title { text-align: center; margin-top: 3in; }
