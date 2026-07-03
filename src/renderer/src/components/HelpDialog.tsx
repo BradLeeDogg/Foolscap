@@ -23,6 +23,7 @@ const TIPS: Array<[string, string]> = [
   ['Views', 'Select a folder, then switch between Scrivenings (one flowing draft), Corkboard (index cards), and Outliner.'],
   ['Write', 'Use the format toolbar for headings, lists, quotes, and images; select text for bold/italic, comments, and footnotes.'],
   ['Research', 'Capture web pages or import PDFs/images in Sources, click one to read it beside your draft, then pull a quote into a footnote or citation.'],
+  ['Fact-check', 'Select a sentence and press ⚑ to anchor a fact-check claim to it; click a claim to jump back to that exact line.'],
   ['Revise', 'Turn on Suggesting for tracked changes; take Snapshots (with a diff) and recover deleted items from the Trash.'],
   ['Finish', 'Compile to DOCX, PDF, ePub, Markdown, or plain text — with presets for manuscripts, MLA/APA/Chicago, screenplay, and more.']
 ]

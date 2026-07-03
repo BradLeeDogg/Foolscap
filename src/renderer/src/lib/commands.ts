@@ -12,6 +12,7 @@ export type AppCommand =
   | 'split-doc'
   | 'merge-docs'
   | 'insert-image'
+  | 'claim-from-selection'
   | 'compose'
   | 'compile'
   | 'snapshot'

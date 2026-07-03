@@ -1532,6 +1532,25 @@ kbd {
   border-bottom: 1px dotted #a9802f;
   cursor: pointer;
 }
+/* Fact-check claim anchor: a quiet dotted underline; flashes when jumped to. */
+.manuscript .claim-anchor {
+  border-bottom: 1px dotted var(--accent);
+}
+.manuscript .claim-anchor.claim-flash {
+  background: var(--accent-soft);
+  transition: background 0.15s ease;
+}
+.fc-claim-jump {
+  cursor: pointer;
+}
+.fc-claim-jump:hover {
+  text-decoration: underline;
+}
+.fc-hint {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  padding-top: 0;
+}
 .manuscript sup.footnote {
   font-size: 0.7em;
   color: var(--accent);

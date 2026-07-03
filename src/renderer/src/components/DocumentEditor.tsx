@@ -11,6 +11,7 @@ import { DOCUMENT_CONTENT_VERSION } from '@shared/types'
 import { SCREENPLAY_ELEMENTS, SCREENPLAY_LABELS, type ScreenplayElement } from '@shared/screenplay'
 import { registerFlusher, useStore } from '../store/useStore'
 import { Comment } from '../editor/comment'
+import { Claim, findClaimRange } from '../editor/claim'
 import { Footnote } from '../editor/footnote'
 import { Screenplay } from '../editor/screenplay'
 import { Deletion, Insertion, TrackChanges, hasTrackedChanges } from '../editor/trackchanges'
@@ -145,6 +146,7 @@ export default function DocumentEditor({
   const setGetActiveText = useStore((s) => s.setGetActiveText)
   const docReloadToken = useStore((s) => s.docReloadToken)
   const setProof = useStore((s) => s.setProof)
+  const setClaimFocus = useStore((s) => s.setClaimFocus)
   const english = useStore((s) => s.meta?.settings.english)
   const oxfordComma = useStore((s) => s.meta?.settings.oxfordComma)
   const dirtyRef = useRef(false)
@@ -160,6 +162,7 @@ export default function DocumentEditor({
       Underline,
       CharacterCount,
       Comment,
+      Claim,
       Footnote,
       Screenplay,
       Insertion,
@@ -273,9 +276,37 @@ export default function DocumentEditor({
       if (active) {
         setFlushActive(() => save())
         setGetActiveText(() => (editor.isDestroyed ? '' : editor.getText({ blockSeparator: '\n' })))
+        // Clicking a claim in the Fact-check panel scrolls here and flashes it.
+        setClaimFocus((claimId: string) => {
+          if (editor.isDestroyed) return false
+          const range = findClaimRange(editor.state.doc, claimId)
+          if (!range) return false
+          editor.chain().setTextSelection(range).scrollIntoView().focus().run()
+          requestAnimationFrame(() => {
+            editor.view.dom
+              .querySelectorAll(`.claim-anchor[data-claim-id="${CSS.escape(claimId)}"]`)
+              .forEach((el) => {
+                el.classList.add('claim-flash')
+                setTimeout(() => el.classList.remove('claim-flash'), 1200)
+              })
+          })
+          return true
+        })
       }
     }
   })
+
+  /** Turn the current selection into a fact-check claim + anchor it in the prose. */
+  const flagClaim = async (): Promise<void> => {
+    if (!editor || editor.state.selection.empty) return
+    const { from, to } = editor.state.selection
+    const text = editor.state.doc.textBetween(from, to, ' ').trim()
+    if (!text) return
+    const claim = await window.api.factcheck.createClaim(docId, text)
+    editor.chain().focus().setTextSelection({ from, to }).setClaim(claim.id).run()
+    useStore.getState().bumpClaims()
+    useStore.getState().showToast('Flagged as a fact-check claim')
+  }
 
   const proofOpts = (): ProofOptions => ({
     dialect: english === 'british' ? 'british' : 'american',
@@ -558,6 +589,7 @@ export default function DocumentEditor({
       else if (cmd === 'split-doc') void splitDoc()
       else if (cmd === 'merge-docs') void mergeUp()
       else if (cmd === 'insert-image') imgInputRef.current?.click()
+      else if (cmd === 'claim-from-selection') void flagClaim()
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, editor, docId, findQuery, caseSensitive])
@@ -598,6 +630,7 @@ export default function DocumentEditor({
       </button>
       <span className="bubble-sep" />
       <button onClick={addComment} title="Comment on selection">❝</button>
+      <button onClick={() => void flagClaim()} title="Flag selection as a fact-check claim">⚑</button>
       <button onClick={addFootnote} title="Footnote">†</button>
     </BubbleMenu>
   )

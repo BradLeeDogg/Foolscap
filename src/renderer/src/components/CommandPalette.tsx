@@ -16,6 +16,7 @@ const COMMANDS: Cmd[] = [
   { id: 'split-doc', label: 'Split document at cursor', hint: 'Ctrl/⌘ ⇧ K' },
   { id: 'merge-docs', label: 'Merge with previous', hint: 'Ctrl/⌘ ⇧ M' },
   { id: 'insert-image', label: 'Insert image…' },
+  { id: 'claim-from-selection', label: 'Flag selection as a fact-check claim' },
   { id: 'view-scrivenings', label: 'View: Scrivenings', hint: 'Ctrl/⌘ 1' },
   { id: 'view-corkboard', label: 'View: Corkboard', hint: 'Ctrl/⌘ 2' },
   { id: 'view-outliner', label: 'View: Outliner', hint: 'Ctrl/⌘ 3' },

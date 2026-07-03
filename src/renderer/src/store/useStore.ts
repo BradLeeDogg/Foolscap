@@ -85,6 +85,12 @@ interface AppState {
     apply: ((from: number, to: number, replacement: string) => void) | null,
     focus: ((from: number, to: number) => void) | null
   ) => void
+  /** Scroll the active editor to a fact-check claim's anchored text (if any). */
+  claimFocus: ((claimId: string) => boolean) | null
+  setClaimFocus: (fn: ((claimId: string) => boolean) | null) => void
+  /** Bumped when a claim is created from the editor, so panels refresh. */
+  claimsToken: number
+  bumpClaims: () => void
   setSplit: (id: string | null) => void
   setComposition: (on: boolean) => void
   /** Update one item's cached word count (after a save) so totals stay live. */
@@ -205,6 +211,10 @@ export const useStore = create<AppState>((set) => ({
   setGetActiveText: (fn) => set({ getActiveText: fn }),
   setProof: (issues, apply, focus) =>
     set({ proofIssues: issues, proofApply: apply, proofFocus: focus }),
+  claimFocus: null,
+  setClaimFocus: (fn) => set({ claimFocus: fn }),
+  claimsToken: 0,
+  bumpClaims: () => set((s) => ({ claimsToken: s.claimsToken + 1 })),
   setSplit: (id) => set({ splitId: id }),
   setComposition: (on) => set({ composition: on }),
   setItemWordCount: (id, n) =>

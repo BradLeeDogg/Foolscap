@@ -20,6 +20,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
   const selectedId = useStore((s) => s.selectedId)
   const select = useStore((s) => s.select)
   const showToast = useStore((s) => s.showToast)
+  const claimsToken = useStore((s) => s.claimsToken)
   const item = tree.find((t) => t.id === selectedId) ?? null
   const isDoc = item?.type === 'document'
 
@@ -40,11 +41,21 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
   const refreshOutstanding = (): void => {
     void window.api.factcheck.outstanding().then(setOutstanding)
   }
-  useEffect(refreshClaims, [selectedId, isDoc])
+  useEffect(refreshClaims, [selectedId, isDoc, claimsToken])
   useEffect(() => {
     void window.api.source.list().then(setSources)
     refreshOutstanding()
-  }, [])
+  }, [claimsToken])
+
+  // Jump from a claim to its anchored sentence in the active editor.
+  const jumpToClaim = (c: ClaimWithSources): void => {
+    if (c.docId !== selectedId) select(c.docId)
+    // Let the editor mount/reselect, then focus the claim's marked range.
+    setTimeout(() => {
+      const found = useStore.getState().claimFocus?.(c.id)
+      if (found === false) showToast('This claim isn’t anchored to text yet.')
+    }, c.docId !== selectedId ? 120 : 0)
+  }
 
   const afterChange = (): void => {
     refreshClaims()
@@ -111,7 +122,7 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
           <ul className="fc-out-list">
             {outstanding.length === 0 && <li className="muted drawer-pad">Nothing outstanding. ✓</li>}
             {outstanding.map((c) => (
-              <li key={c.id} onClick={() => select(c.docId)}>
+              <li key={c.id} onClick={() => jumpToClaim(c)}>
                 <span className={`fc-dot fc-${c.status}`} />
                 <span className="fc-out-text">{c.text}</span>
                 <span className="fc-out-doc">{titleOf(c.docId)}</span>
@@ -136,6 +147,10 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
               Add claim
             </button>
           </div>
+          <p className="muted drawer-pad fc-hint">
+            Tip: select a sentence in the draft and press ⚑ (or the command palette →
+            “Flag selection…”) to anchor a claim to it. Click any claim to jump back.
+          </p>
 
           <div className="fc-filters drawer-pad">
             {(['all', 'needs-sourcing', 'disputed', 'verified'] as const).map((f) => (
@@ -157,7 +172,13 @@ export default function FactCheckPanel({ onClose }: Props): JSX.Element {
             )}
             {shownClaims.map((c) => (
               <li className="fc-claim" key={c.id}>
-                <div className="fc-claim-text">{c.text}</div>
+                <div
+                  className="fc-claim-text fc-claim-jump"
+                  title="Jump to the anchored text"
+                  onClick={() => jumpToClaim(c)}
+                >
+                  {c.text}
+                </div>
                 <div className="fc-claim-controls">
                   <select
                     className={`fc-status fc-${c.status}`}

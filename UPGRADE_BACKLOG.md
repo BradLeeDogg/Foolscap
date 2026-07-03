@@ -11,12 +11,14 @@ between the writer and the page? Tickets that would fail the test live in the
 **Suggested order:** Tier 1 (trust) → Tier 2 (quick wins) → Tier 3 (structural). Within
 a tier, top-to-bottom. T-01/T-02 before anything else — they protect words.
 
-> **Build status (all tiers implemented this session).** ✅ = shipped with tests/gates.
-> T-01…T-17, T-18, T-20, T-21 ✅. **T-19 partial:** status-filter chips + undoable
-> claim delete + searchable source linking shipped; **in-prose claim anchoring
-> (a ProseMirror `claim` mark) is deferred** — see note under T-19. Everything went
-> through typecheck + build + WP_SELFTEST + headless smoke; new selftests cover
-> backup-restore, metadata-filtered search, and the Shunn-short layout.
+> **Build status: all 21 tickets implemented this session.** ✅ = shipped with
+> tests/gates. T-01…T-21 ✅, including T-19's in-prose claim anchoring (the
+> ProseMirror `claim` mark — select a sentence → ⚑ to anchor a claim; click a
+> claim to jump to/flash the sentence). Everything went through typecheck +
+> build + WP_SELFTEST + headless smoke; new selftests cover backup-restore,
+> metadata-filtered search, and the Shunn-short layout. (The claim mark itself
+> is renderer/ProseMirror, so it's gated by build + smoke, not a headless unit
+> test — see the manual test list in REVIEW_FINDINGS.md.)
 
 ---
 
@@ -149,8 +151,8 @@ b) If (a) is descoped: change synopses to “Fill in, or delete before compile�
 **Accept:** opening any two unpinned panels never shows both; editor never narrower than 55% with one panel; every removed button’s function reachable via Panels ▾ **and** palette **and** (big three) shortcut; smoke test updated for new mount paths.
 **Effort:** L · **Personas:** all; short-story writer most (calm) · **Ethos:** this *is* the ethos: fewer things between writer and page, with discoverability preserved via menu + palette + help.
 
-### T-19 · Claims anchored to text + transcript-linked sources  ⚠️ PARTIAL
-**Shipped:** status-filter chips (All/Needs/Disputed/Verified); claim deletion is undoable (toast + Ctrl+Z); transcript segment → timestamped source already existed and is now linkable via the searchable picker (T-15). **Deferred (the L part):** anchoring a claim to a `{from,to}` range in the prose via a ProseMirror `claim` mark (reuse the comment-mark infra) so clicking a claim scrolls to/flashes the sentence, and "Add claim from selection". Future session: add the mark to `src/renderer/src/editor/` mirroring `comment.ts`, store `claimId` in claim rows, remap on edit, and wire panel→editor focus through the store (like `proofFocus`).
+### T-19 · Claims anchored to text + transcript-linked sources  ✅
+**Shipped in full:** status-filter chips (All/Needs/Disputed/Verified); undoable claim delete (toast + Ctrl+Z); transcript segment → timestamped source, linkable via the searchable picker (T-15); **and in-prose anchoring** — a ProseMirror `claim` mark (`editor/claim.ts`) carries the claimId in the document JSON (so it moves with edits). Select a sentence → the ⚑ toolbar button / palette "Flag selection as a fact-check claim" creates the claim and marks the text; clicking any claim in the panel scrolls the editor to and flashes the anchored range (bridged through the store's `claimFocus`, mirroring `proofFocus`). Known limit: deleting a claim leaves its (harmless) dotted-underline mark in the prose until the next edit over it — noted for a future sweep.
 **Problem:** Claims are free-floating strings — the checker can’t jump claim→sentence; transcripts can’t be cited with timestamps despite `locator` existing for exactly that. *(F-13, P2)*
 **Change:**
 - “Add claim from selection”: selecting prose in a doc and invoking (context menu + palette) creates a claim whose text = selection and stores `{from,to}` anchor (best-effort, remapped on edit like comments already are — reuse the comment mark infrastructure: a `claim` mark with claimId).
