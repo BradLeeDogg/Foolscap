@@ -102,6 +102,7 @@ const api: FoolscapAPI = {
     updateField: (id, patch) => ipcRenderer.invoke('metadata:updateField', id, patch),
     removeField: (id) => ipcRenderer.invoke('metadata:removeField', id),
     getValues: (itemId) => ipcRenderer.invoke('metadata:getValues', itemId),
+    allValues: () => ipcRenderer.invoke('metadata:allValues'),
     setValue: (itemId, fieldId, value) =>
       ipcRenderer.invoke('metadata:setValue', itemId, fieldId, value)
   },

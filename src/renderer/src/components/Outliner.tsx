@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createColumnHelper,
   flexRender,
@@ -16,6 +16,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { LabelDef } from '@shared/api'
+import type { MetaField, MetaValues } from '@shared/types'
 import { useStore } from '../store/useStore'
 import { subtreeFlat, toMove, type FlatNode } from '../lib/tree'
 
@@ -36,6 +37,41 @@ export default function Outliner({ folderId }: Props): JSX.Element {
   const statuses = labels.filter((l) => l.kind === 'status')
   const labelDefs = labels.filter((l) => l.kind === 'label')
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  // Optional metadata columns (POV/Setting/…), off by default, per-project.
+  const [fields, setFields] = useState<MetaField[]>([])
+  const [values, setValues] = useState<Record<string, MetaValues>>({})
+  const [shownCols, setShownCols] = useState<Set<string>>(new Set())
+  const [colMenu, setColMenu] = useState(false)
+  const colKey = `wp-ol-cols:${useStore.getState().meta?.id ?? ''}`
+  useEffect(() => {
+    void window.api.metadata.listFields().then(setFields)
+    void window.api.metadata.allValues().then(setValues)
+    try {
+      const saved = JSON.parse(localStorage.getItem(colKey) || '[]') as string[]
+      setShownCols(new Set(saved))
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const toggleCol = (id: string): void => {
+    setShownCols((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      try {
+        localStorage.setItem(colKey, JSON.stringify([...next]))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+  const setMetaVal = (itemId: string, fieldId: string, value: string): void => {
+    setValues((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] ?? {}), [fieldId]: value } }))
+    void window.api.metadata.setValue(itemId, fieldId, value)
+  }
 
   const columns = useMemo(
     () => [
@@ -100,9 +136,27 @@ export default function Outliner({ folderId }: Props): JSX.Element {
             }}
           />
         )
-      })
+      }),
+      ...fields
+        .filter((f) => shownCols.has(f.id))
+        .map((f) =>
+          col.display({
+            id: `meta-${f.id}`,
+            header: f.name,
+            cell: ({ row }) => (
+              <input
+                className="ol-synopsis"
+                defaultValue={values[row.original.id]?.[f.id] ?? ''}
+                placeholder="—"
+                key={`${row.original.id}-${f.id}`}
+                onBlur={(e) => setMetaVal(row.original.id, f.id, e.target.value)}
+              />
+            )
+          })
+        )
     ],
-    [labelDefs, statuses, select, patchItem]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [labelDefs, statuses, select, patchItem, fields, shownCols, values]
   )
 
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
@@ -125,6 +179,25 @@ export default function Outliner({ folderId }: Props): JSX.Element {
 
   return (
     <div className="outliner">
+      {fields.length > 0 && (
+        <div className="ol-toolbar">
+          <div className="ol-colmenu">
+            <button onClick={() => setColMenu((v) => !v)} aria-expanded={colMenu}>
+              Columns ▾
+            </button>
+            {colMenu && (
+              <div className="ol-colmenu-pop" onMouseLeave={() => setColMenu(false)}>
+                {fields.map((f) => (
+                  <label key={f.id}>
+                    <input type="checkbox" checked={shownCols.has(f.id)} onChange={() => toggleCol(f.id)} />
+                    {f.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <table className="ol-table">
           <thead>

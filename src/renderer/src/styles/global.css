@@ -352,6 +352,37 @@ fieldset.field {
   font-size: 0.8rem;
 }
 
+/* Outliner metadata-column menu. */
+.ol-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.3rem 0.5rem;
+}
+.ol-colmenu {
+  position: relative;
+}
+.ol-colmenu-pop {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+.ol-colmenu-pop label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
 /* Source filter row + keyboard-first source picker (fact-check linking). */
 .src-filter {
   display: flex;

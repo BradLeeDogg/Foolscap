@@ -79,15 +79,27 @@ export async function searchProject(
   criteria: CollectionCriteria
 ): Promise<SearchResult[]> {
   const rows = db
-    .prepare("SELECT id, title, label_id, status_id FROM binder_items WHERE type = 'document'")
+    .prepare("SELECT id, title, label_id, status_id FROM binder_items WHERE type = 'document' AND deleted IS NULL")
     .all() as Array<{ id: string; title: string; label_id: string | null; status_id: string | null }>
 
   const query = (criteria.text ?? '').trim().toLowerCase()
   const results: SearchResult[] = []
 
+  // Metadata filters (POV = Mara, …) resolve against metadata_values in SQL.
+  const fieldFilters = (criteria.fields ?? []).filter((f) => f.fieldId && f.value.trim())
+  const valueFor = db.prepare('SELECT value FROM metadata_values WHERE item_id = ? AND field_id = ?')
+  const metaMatches = (itemId: string): boolean =>
+    fieldFilters.every((f) => {
+      const row = valueFor.get(itemId, f.fieldId) as { value: string } | undefined
+      const v = (row?.value ?? '').toLowerCase()
+      const want = f.value.trim().toLowerCase()
+      return f.contains ? v.includes(want) : v === want
+    })
+
   for (const row of rows) {
     if (criteria.labelId && row.label_id !== criteria.labelId) continue
     if (criteria.statusId && row.status_id !== criteria.statusId) continue
+    if (fieldFilters.length && !metaMatches(row.id)) continue
 
     if (!query) {
       results.push({ itemId: row.id, title: row.title, snippet: '', matches: 0 })

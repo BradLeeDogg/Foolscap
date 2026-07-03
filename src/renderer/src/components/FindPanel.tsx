@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Collection, CollectionCriteria, SearchResult } from '@shared/types'
+import type { Collection, CollectionCriteria, MetaField, SearchResult } from '@shared/types'
 import { useStore } from '../store/useStore'
 
 interface Props {
@@ -16,6 +16,9 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
   const [text, setText] = useState('')
   const [labelId, setLabelId] = useState('')
   const [statusId, setStatusId] = useState('')
+  const [fields, setFields] = useState<MetaField[]>([])
+  const [fieldId, setFieldId] = useState('')
+  const [fieldValue, setFieldValue] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searched, setSearched] = useState(false)
   const [collections, setCollections] = useState<Collection[]>([])
@@ -34,11 +37,15 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
     void window.api.collection.list().then(setCollections)
   }
   useEffect(refreshCollections, [])
+  useEffect(() => {
+    void window.api.metadata.listFields().then(setFields)
+  }, [])
 
   const criteria = (): CollectionCriteria => ({
     text: text.trim() || undefined,
     labelId: labelId || null,
-    statusId: statusId || null
+    statusId: statusId || null,
+    fields: fieldId && fieldValue.trim() ? [{ fieldId, value: fieldValue.trim(), contains: true }] : undefined
   })
 
   const run = async (): Promise<void> => {
@@ -57,6 +64,9 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
     setText(c.criteria.text ?? '')
     setLabelId(c.criteria.labelId ?? '')
     setStatusId(c.criteria.statusId ?? '')
+    const f = c.criteria.fields?.[0]
+    setFieldId(f?.fieldId ?? '')
+    setFieldValue(f?.value ?? '')
     setResults(await window.api.search.run(c.criteria))
     setSearched(true)
   }
@@ -138,6 +148,26 @@ export default function FindPanel({ onClose }: Props): JSX.Element {
             ))}
           </select>
         </div>
+        {fields.length > 0 && (
+          <div className="find-filters">
+            <select value={fieldId} onChange={(e) => setFieldId(e.target.value)} aria-label="Metadata field">
+              <option value="">Any field</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <input
+              value={fieldValue}
+              placeholder="value (e.g. Mara)"
+              onChange={(e) => setFieldValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && run()}
+              disabled={!fieldId}
+              aria-label="Field value"
+            />
+          </div>
+        )}
         <div className="find-actions">
           <button className="primary" onClick={run}>
             Search

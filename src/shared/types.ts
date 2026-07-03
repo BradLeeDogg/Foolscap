@@ -128,6 +128,8 @@ export interface CollectionCriteria {
   text?: string
   labelId?: string | null
   statusId?: string | null
+  /** Match custom metadata (e.g. POV = Mara). `contains` = substring, else exact. */
+  fields?: Array<{ fieldId: string; value: string; contains?: boolean }>
 }
 
 export interface SearchResult {

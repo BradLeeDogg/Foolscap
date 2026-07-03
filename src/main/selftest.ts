@@ -364,6 +364,25 @@ async function runChecks(): Promise<void> {
   const field = meta.createField(db, 'Mood', 'text')
   meta.setValue(db, doc.id, field.id, 'tense')
   assert(meta.getValues(db, doc.id)[field.id] === 'tense', 'metadata value round-trips')
+  {
+    // Metadata-aware collections (POV = Mara flow): exact + contains match.
+    const pov = meta.listFields(db).find((f) => f.name === 'POV')!
+    meta.setValue(db, doc.id, pov.id, 'Mara')
+    const povHits = await searchProject(db, paths.root, {
+      fields: [{ fieldId: pov.id, value: 'Mara' }]
+    })
+    assert(
+      povHits.some((h) => h.itemId === doc.id),
+      'collection filters on custom metadata (POV = Mara)'
+    )
+    const povMiss = await searchProject(db, paths.root, {
+      fields: [{ fieldId: pov.id, value: 'Ellis' }]
+    })
+    assert(!povMiss.some((h) => h.itemId === doc.id), 'metadata filter excludes non-matches')
+    const all = meta.getAllValues(db)
+    assert(all[doc.id]?.[pov.id] === 'Mara', 'bulk metadata values load for outliner columns')
+    meta.setValue(db, doc.id, pov.id, '')
+  }
   setNotes(db, doc.id, 'check quote against tape')
   assert(
     listBinder(db).find((i) => i.id === doc.id)!.notes === 'check quote against tape',

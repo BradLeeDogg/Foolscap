@@ -302,6 +302,8 @@ export interface FoolscapAPI {
     ): Promise<MetaField[]>
     removeField(id: string): Promise<MetaField[]>
     getValues(itemId: string): Promise<MetaValues>
+    /** All items' metadata values at once (outliner columns). */
+    allValues(): Promise<Record<string, MetaValues>>
     setValue(itemId: string, fieldId: string, value: string): Promise<void>
   }
   source: {

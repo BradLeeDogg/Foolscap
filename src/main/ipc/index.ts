@@ -402,6 +402,10 @@ export function registerIpc(): void {
     const { db } = projectService.requireCurrent()
     return metadata.getValues(db, itemId)
   })
+  ipcMain.handle('metadata:allValues', () => {
+    const { db } = projectService.requireCurrent()
+    return metadata.getAllValues(db)
+  })
   ipcMain.handle('metadata:setValue', (_e, itemId: string, fieldId: string, value: string) => {
     const { db } = projectService.requireCurrent()
     metadata.setValue(db, itemId, fieldId, value)

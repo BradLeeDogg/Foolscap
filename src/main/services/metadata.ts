@@ -75,6 +75,16 @@ export function getValues(db: DB, itemId: string): MetaValues {
   return out
 }
 
+/** Every item's metadata values at once (for the outliner columns). */
+export function getAllValues(db: DB): Record<string, MetaValues> {
+  const rows = db
+    .prepare('SELECT item_id, field_id, value FROM metadata_values')
+    .all() as Array<{ item_id: string; field_id: string; value: string }>
+  const out: Record<string, MetaValues> = {}
+  for (const r of rows) (out[r.item_id] ??= {})[r.field_id] = r.value
+  return out
+}
+
 export function setValue(db: DB, itemId: string, fieldId: string, value: string): void {
   if (value === '') {
     db.prepare('DELETE FROM metadata_values WHERE item_id = ? AND field_id = ?').run(itemId, fieldId)
