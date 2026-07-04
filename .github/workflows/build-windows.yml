@@ -43,27 +43,22 @@ jobs:
             release/*.zip
           if-no-files-found: error
 
-      # Drop any stale assets from a previous name (e.g. WProcessor-*) so the
-      # release only ever lists the current Foolscap artifacts.
-      - name: Remove stale release assets
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          $names = gh release view win-latest --json assets -q ".assets[].name"
-          foreach ($n in $names) { if ($n -like "WProcessor*") { gh release delete-asset win-latest "$n" -y } }
-
-      # Also publish to a Release so there's a stable, click-to-download link.
-      - name: Publish to a Release
+      # Publish the installers to the PUBLIC downloads repo so the source repo
+      # can be private while download links stay public. Needs a repo secret
+      # RELEASES_TOKEN (a fine-grained PAT with Contents: read+write on
+      # BradLeeDogg/Foolscap-Releases). If the secret is absent, this step is
+      # skipped (continue-on-error) and the build still succeeds.
+      - name: Publish to the public downloads repo
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
+          repository: BradLeeDogg/Foolscap-Releases
+          token: ${{ secrets.RELEASES_TOKEN }}
           tag_name: win-latest
           name: Foolscap — latest Windows build
           body: |
-            Unsigned Windows build, made automatically on a clean Windows VM
-            from branch `claude/epic-archimedes-j9876k`. Three ways to run it:
+            Unsigned Windows build, made automatically on a clean Windows VM.
+            Three ways to run it:
 
             - `Foolscap-<version>-setup.exe` — installer.
             - `Foolscap-<version>-portable.exe` — the whole program in one file; just run it (no install).
