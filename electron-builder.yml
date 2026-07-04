@@ -1,0 +1,40 @@
+appId: com.foolscap.app
+productName: Foolscap
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+  # pdf-parse ships several MB of sample PDFs under test/ — not needed at runtime
+  - "!**/node_modules/pdf-parse/test/**"
+asarUnpack:
+  # native module must live unpacked so its .node binary is loadable
+  - "**/node_modules/better-sqlite3/**"
+extraResources:
+  # offline thesaurus data (generated at build time), read from resourcesPath
+  - from: resources/thesaurus.txt
+    to: thesaurus.txt
+win:
+  target:
+    - nsis
+    - portable
+    - zip
+  # used by the .zip target (the portable "whole app" archive)
+  artifactName: ${productName}-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+portable:
+  # a single self-contained .exe — the whole program in one file, no install
+  artifactName: ${productName}-${version}-portable.${ext}
+mac:
+  target:
+    - dmg
+  category: public.app-category.productivity
+linux:
+  target:
+    - AppImage
+  category: Office

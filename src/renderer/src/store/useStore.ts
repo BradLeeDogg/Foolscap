@@ -1,0 +1,227 @@
+import { create } from 'zustand'
+import { clearUndo } from '../lib/undo'
+import type { BinderItem, ProjectMeta } from '@shared/types'
+import type { LabelDef, OpenProjectResult } from '@shared/api'
+import type { DocIssue } from '@shared/proofreader'
+
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+export type FolderView = 'scrivenings' | 'corkboard' | 'outliner'
+
+// --- dirty-editor flush registry (module-level; not reactive state) ----------
+// Every mounted editor registers a flusher; close/quit paths await them all so
+// the last debounce-window of typing is never lost.
+const flushers = new Map<string, () => Promise<void>>()
+
+/** Register an editor's flush function; returns its unregister. */
+export function registerFlusher(key: string, fn: () => Promise<void>): () => void {
+  flushers.set(key, fn)
+  return () => flushers.delete(key)
+}
+
+/** Flush every mounted editor's pending save (no-ops when clean). */
+export async function flushAllDirty(): Promise<void> {
+  await Promise.allSettled([...flushers.values()].map((fn) => fn()))
+}
+
+interface AppState {
+  meta: ProjectMeta | null
+  tree: BinderItem[]
+  labels: LabelDef[]
+  selectedId: string | null
+
+  saveState: SaveState
+  lastSavedAt: number | null
+  /** Non-null while any editor (active or stitched) is failing to write to disk. */
+  saveError: string | null
+  setSaveError: (msg: string | null) => void
+  /** Transient toast (auto-fades). Used for undo hints, import summaries, etc. */
+  toast: string | null
+  showToast: (msg: string) => void
+  docWordCount: number
+  selectionWordCount: number
+
+  /** Second pane document (split view); null = split closed. */
+  splitId: string | null
+  /** Full-screen composition mode active. */
+  composition: boolean
+  /** Total project words when the project was opened (session baseline). */
+  sessionStartWords: number
+  /** How a selected folder is presented. */
+  folderView: FolderView
+
+  openResult: (result: OpenProjectResult) => void
+  closeProject: () => void
+  setTree: (tree: BinderItem[]) => void
+  setMeta: (meta: ProjectMeta) => void
+  select: (id: string | null) => void
+  setSaveState: (state: SaveState, at?: number) => void
+  setDocWordCount: (n: number) => void
+  setSelectionWordCount: (n: number) => void
+  /** Insert content (plain text or HTML) at the cursor of the last-focused editor. */
+  inserter: ((content: string) => boolean) | null
+  setInserter: (fn: ((content: string) => boolean) | null) => void
+  /** Insert a footnote at the cursor of the last-focused editor. */
+  footnoteInserter: ((text: string) => boolean) | null
+  setFootnoteInserter: (fn: ((text: string) => boolean) | null) => void
+  /** The source currently open in the Research viewer (null = closed). */
+  viewSourceId: string | null
+  viewSource: (id: string) => void
+  closeViewSource: () => void
+  /** Flush the active editor's pending save (before a project-wide replace). */
+  flushActive: (() => Promise<void>) | null
+  setFlushActive: (fn: (() => Promise<void>) | null) => void
+  /** Bumped to make open editors reload from disk (after a project-wide replace). */
+  docReloadToken: number
+  bumpDocReload: () => void
+  /** Read the active editor's plain text (for Writing Analysis). */
+  getActiveText: (() => string) | null
+  setGetActiveText: (fn: (() => string) | null) => void
+  /** Proofreading issues for the active document + fix/jump bridges to its editor. */
+  proofIssues: DocIssue[]
+  proofApply: ((from: number, to: number, replacement: string) => void) | null
+  proofFocus: ((from: number, to: number) => void) | null
+  setProof: (
+    issues: DocIssue[],
+    apply: ((from: number, to: number, replacement: string) => void) | null,
+    focus: ((from: number, to: number) => void) | null
+  ) => void
+  /** Scroll the active editor to a fact-check claim's anchored text (if any). */
+  claimFocus: ((claimId: string) => boolean) | null
+  setClaimFocus: (fn: ((claimId: string) => boolean) | null) => void
+  /** Bumped when a claim is created from the editor, so panels refresh. */
+  claimsToken: number
+  bumpClaims: () => void
+  setSplit: (id: string | null) => void
+  setComposition: (on: boolean) => void
+  /** Update one item's cached word count (after a save) so totals stay live. */
+  setItemWordCount: (id: string, n: number) => void
+  setFolderView: (view: FolderView) => void
+  /** Optimistically patch a binder item in the local tree (synopsis/label/etc). */
+  patchItem: (id: string, patch: Partial<BinderItem>) => void
+}
+
+/** Sum of cached word counts across all documents. */
+export function totalWords(tree: BinderItem[]): number {
+  return tree.reduce((sum, it) => (it.type === 'document' ? sum + it.wordCount : sum), 0)
+}
+
+/** First selectable document in binder order, used to auto-open on project load. */
+function firstDocument(tree: BinderItem[]): string | null {
+  const byParent = new Map<string | null, BinderItem[]>()
+  for (const it of tree) {
+    const arr = byParent.get(it.parentId) ?? []
+    arr.push(it)
+    byParent.set(it.parentId, arr)
+  }
+  for (const arr of byParent.values()) arr.sort((a, b) => a.position - b.position)
+  const stack = [...(byParent.get(null) ?? [])]
+  while (stack.length) {
+    const node = stack.shift()!
+    if (node.type === 'document') return node.id
+    stack.unshift(...(byParent.get(node.id) ?? []))
+  }
+  return null
+}
+
+export const useStore = create<AppState>((set) => ({
+  meta: null,
+  tree: [],
+  labels: [],
+  selectedId: null,
+  saveState: 'idle',
+  lastSavedAt: null,
+  saveError: null,
+  setSaveError: (msg) => set({ saveError: msg }),
+  toast: null,
+  showToast: (() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    return (msg: string) => {
+      set({ toast: msg })
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => set({ toast: null }), 4000)
+    }
+  })(),
+  docWordCount: 0,
+  selectionWordCount: 0,
+  inserter: null,
+  footnoteInserter: null,
+  viewSourceId: null,
+  flushActive: null,
+  docReloadToken: 0,
+  getActiveText: null,
+  proofIssues: [],
+  proofApply: null,
+  proofFocus: null,
+  splitId: null,
+  composition: false,
+  sessionStartWords: 0,
+  folderView: 'scrivenings',
+
+  openResult: (result) => {
+    clearUndo() // structural undo must not cross project boundaries
+    // Resume where the writer was; fall back to the first document.
+    const resume =
+      result.lastSelectedId && result.tree.some((t) => t.id === result.lastSelectedId)
+        ? result.lastSelectedId
+        : firstDocument(result.tree)
+    set({
+      meta: result.meta,
+      tree: result.tree,
+      labels: result.labels,
+      selectedId: resume,
+      saveState: 'idle',
+      lastSavedAt: null,
+      docWordCount: 0,
+      selectionWordCount: 0,
+      splitId: null,
+      composition: false,
+      sessionStartWords: totalWords(result.tree),
+      folderView: 'scrivenings'
+    })
+  },
+  closeProject: () =>
+    set({
+      meta: null,
+      tree: [],
+      labels: [],
+      selectedId: null,
+      saveState: 'idle',
+      lastSavedAt: null,
+      docWordCount: 0,
+      selectionWordCount: 0,
+      splitId: null,
+      composition: false,
+      sessionStartWords: 0
+    }),
+  setTree: (tree) => set({ tree }),
+  setMeta: (meta) => set({ meta }),
+  select: (id) => {
+    set({ selectedId: id, selectionWordCount: 0 })
+    void window.api.project.setLastSelected(id).catch(() => undefined)
+  },
+  setSaveState: (state, at) => set(at ? { saveState: state, lastSavedAt: at } : { saveState: state }),
+  setDocWordCount: (n) => set({ docWordCount: n }),
+  setSelectionWordCount: (n) => set({ selectionWordCount: n }),
+  setInserter: (fn) => set({ inserter: fn }),
+  setFootnoteInserter: (fn) => set({ footnoteInserter: fn }),
+  viewSource: (id) => set({ viewSourceId: id }),
+  closeViewSource: () => set({ viewSourceId: null }),
+  setFlushActive: (fn) => set({ flushActive: fn }),
+  bumpDocReload: () => set((s) => ({ docReloadToken: s.docReloadToken + 1 })),
+  setGetActiveText: (fn) => set({ getActiveText: fn }),
+  setProof: (issues, apply, focus) =>
+    set({ proofIssues: issues, proofApply: apply, proofFocus: focus }),
+  claimFocus: null,
+  setClaimFocus: (fn) => set({ claimFocus: fn }),
+  claimsToken: 0,
+  bumpClaims: () => set((s) => ({ claimsToken: s.claimsToken + 1 })),
+  setSplit: (id) => set({ splitId: id }),
+  setComposition: (on) => set({ composition: on }),
+  setItemWordCount: (id, n) =>
+    set((s) => ({
+      tree: s.tree.map((it) => (it.id === id ? { ...it, wordCount: n } : it))
+    })),
+  setFolderView: (view) => set({ folderView: view }),
+  patchItem: (id, patch) =>
+    set((s) => ({ tree: s.tree.map((it) => (it.id === id ? { ...it, ...patch } : it)) }))
+}))

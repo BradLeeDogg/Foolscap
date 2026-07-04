@@ -1,0 +1,76 @@
+name: Build Foolscap (Windows)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ["claude/epic-archimedes-j9876k"]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Clean Windows runner: no corporate AV, so Electron's binary downloads and
+      # extracts normally. .npmrc still routes better-sqlite3 to its Electron prebuilt.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build main/preload/renderer
+        run: npm run build
+
+      - name: Package Windows app (installer + portable + zip, unsigned)
+        run: npx electron-builder --win --publish never
+
+      - name: Show build output
+        run: dir release
+        shell: cmd
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Foolscap-Windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+
+      # Drop any stale assets from a previous name (e.g. WProcessor-*) so the
+      # release only ever lists the current Foolscap artifacts.
+      - name: Remove stale release assets
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $names = gh release view win-latest --json assets -q ".assets[].name"
+          foreach ($n in $names) { if ($n -like "WProcessor*") { gh release delete-asset win-latest "$n" -y } }
+
+      # Also publish to a Release so there's a stable, click-to-download link.
+      - name: Publish to a Release
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: win-latest
+          name: Foolscap — latest Windows build
+          body: |
+            Unsigned Windows build, made automatically on a clean Windows VM
+            from branch `claude/epic-archimedes-j9876k`. Three ways to run it:
+
+            - `Foolscap-<version>-setup.exe` — installer.
+            - `Foolscap-<version>-portable.exe` — the whole program in one file; just run it (no install).
+            - `Foolscap-<version>.zip` — unzip anywhere and run `Foolscap.exe`.
+
+            Not code-signed, so Windows SmartScreen may warn — choose
+            **More info → Run anyway**.
+          files: |
+            release/*.exe
+            release/*.zip

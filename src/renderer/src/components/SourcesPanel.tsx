@@ -1,0 +1,350 @@
+import { useEffect, useState } from 'react'
+import type { Source, SourceKind } from '@shared/types'
+import {
+  buildBibliography,
+  CITATION_STYLES,
+  CITATION_STYLE_LABELS,
+  inTextCitation,
+  type CitationStyle
+} from '@shared/citations'
+import { defaultPresetFor } from '@shared/presets'
+import { useStore } from '../store/useStore'
+
+interface Props {
+  onClose: () => void
+}
+
+type EditField = 'author' | 'title' | 'container' | 'publisher' | 'year' | 'locator' | 'url'
+const EDIT_FIELDS: Array<[EditField, string]> = [
+  ['author', 'Author(s)'],
+  ['title', 'Title'],
+  ['container', 'Container (site / journal / book)'],
+  ['publisher', 'Publisher'],
+  ['year', 'Year / date'],
+  ['locator', 'Pages / locator'],
+  ['url', 'URL']
+]
+
+// Manual entry: each source type shows just the fields that matter for it.
+type ManualField = 'author' | 'title' | 'container' | 'publisher' | 'year' | 'locator' | 'url' | 'notes'
+const FIELD_LABEL: Record<ManualField, string> = {
+  author: 'Author(s)',
+  title: 'Title',
+  container: 'Journal / container',
+  publisher: 'Publisher',
+  year: 'Year / date',
+  locator: 'Pages / locator',
+  url: 'URL',
+  notes: 'Note'
+}
+interface ManualType {
+  kind: SourceKind
+  label: string
+  fields: ManualField[]
+}
+const MANUAL_TYPES: ManualType[] = [
+  { kind: 'book', label: 'Book', fields: ['author', 'title', 'publisher', 'year'] },
+  { kind: 'article', label: 'Journal / article', fields: ['author', 'title', 'container', 'year', 'locator'] },
+  { kind: 'url', label: 'Website', fields: ['author', 'title', 'url', 'year'] },
+  { kind: 'transcript', label: 'Interview / transcript', fields: ['author', 'title', 'locator'] },
+  { kind: 'note', label: 'Note', fields: ['title', 'notes'] }
+]
+const BLANK_FORM: Record<ManualField, string> = {
+  author: '', title: '', container: '', publisher: '', year: '', locator: '', url: '', notes: ''
+}
+
+type SortKey = 'recent' | 'title' | 'author' | 'year'
+
+/** Substring match across the fields a writer remembers (title/author/year/kind). */
+export function filterSources(sources: Source[], filter: string): Source[] {
+  const q = filter.trim().toLowerCase()
+  if (!q) return sources
+  const terms = q.split(/\s+/)
+  return sources.filter((s) => {
+    const hay = `${s.title} ${s.author} ${s.container} ${s.publisher} ${s.year} ${s.kind}`.toLowerCase()
+    return terms.every((t) => hay.includes(t))
+  })
+}
+
+export function sortSources(sources: Source[], sort: SortKey): Source[] {
+  const by = {
+    recent: (a: Source, b: Source) => b.createdAt - a.createdAt,
+    title: (a: Source, b: Source) => a.title.localeCompare(b.title),
+    author: (a: Source, b: Source) => (a.author || '￿').localeCompare(b.author || '￿'),
+    year: (a: Source, b: Source) => (b.year || '').localeCompare(a.year || '')
+  }[sort]
+  return [...sources].sort(by)
+}
+
+function hostnameOf(raw: string): string {
+  try {
+    return new URL(/^[a-z]+:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+/** The project's research library + a citation/bibliography generator. */
+export default function SourcesPanel({ onClose }: Props): JSX.Element {
+  const meta = useStore((s) => s.meta)
+  const inserter = useStore((s) => s.inserter)
+  const viewSource = useStore((s) => s.viewSource)
+  const [sources, setSources] = useState<Source[]>([])
+  const [url, setUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const [mkind, setMkind] = useState<SourceKind>('book')
+  const [form, setForm] = useState<Record<ManualField, string>>({ ...BLANK_FORM })
+
+  // A 200-reference library needs search-not-scroll (and sane ordering).
+  const [filter, setFilter] = useState('')
+  const [sort, setSort] = useState<SortKey>('recent')
+  const visibleSources = sortSources(filterSources(sources, filter), sort)
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const initialStyle = (): CitationStyle => {
+    const p = meta ? defaultPresetFor(meta.type) : 'mla'
+    return p === 'apa' || p === 'chicago' ? p : 'mla'
+  }
+  const [style, setStyle] = useState<CitationStyle>(initialStyle)
+
+  const refresh = (): void => {
+    void window.api.source.list().then(setSources)
+  }
+  useEffect(refresh, [])
+
+  const flash = (m: string): void => {
+    setMsg(m)
+    setTimeout(() => setMsg(null), 2500)
+  }
+
+  const capture = async (): Promise<void> => {
+    if (!url.trim()) return
+    setBusy(true)
+    setMsg('Capturing…')
+    try {
+      const s = await window.api.source.capture(url.trim())
+      setUrl('')
+      setMsg(`Captured “${s.title}”`)
+      refresh()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Capture failed')
+      // Pre-fill the reference form so a blocked page can still be cited.
+      setMkind('url')
+      setForm((f) => ({ ...f, url: url.trim(), title: f.title || hostnameOf(url) }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const importFile = async (): Promise<void> => {
+    const s = await window.api.source.importFile()
+    if (s) {
+      setMsg(`Imported “${s.title}”`)
+      refresh()
+    }
+  }
+
+  const activeType = MANUAL_TYPES.find((t) => t.kind === mkind) ?? MANUAL_TYPES[0]!
+  const setField = (f: ManualField, v: string): void => setForm((prev) => ({ ...prev, [f]: v }))
+  const addManual = async (): Promise<void> => {
+    if (!form.title.trim()) {
+      flash('Give the reference a title first.')
+      return
+    }
+    const val = (f: ManualField): string | undefined =>
+      activeType.fields.includes(f) && form[f].trim() ? form[f].trim() : undefined
+    await window.api.source.createManual({
+      kind: mkind,
+      title: form.title.trim(),
+      author: val('author'),
+      container: val('container'),
+      publisher: val('publisher'),
+      year: val('year'),
+      locator: val('locator') ?? null,
+      url: val('url') ?? null,
+      notes: val('notes')
+    })
+    setForm({ ...BLANK_FORM })
+    flash('Added to your sources.')
+    refresh()
+  }
+
+  const remove = async (id: string): Promise<void> => {
+    setSources(await window.api.source.remove(id))
+  }
+
+  const patchLocal = (id: string, field: EditField, value: string): void =>
+    setSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
+  const persist = (id: string, field: EditField, value: string): void => {
+    void window.api.source.update(id, { [field]: value })
+  }
+
+  const copyBibliography = async (): Promise<void> => {
+    const bib = buildBibliography(sources, style)
+    await window.api.clipboard.write(bib.text, bib.html)
+    flash(`Copied ${bib.entries.length} ${CITATION_STYLE_LABELS[style]} entr${bib.entries.length === 1 ? 'y' : 'ies'}`)
+  }
+  const insertBibliography = (): void => {
+    const bib = buildBibliography(sources, style)
+    if (inserter?.(bib.html)) flash(`Inserted ${bib.entries.length} entr${bib.entries.length === 1 ? 'y' : 'ies'}`)
+    else void copyBibliography()
+  }
+  const insertInText = (s: Source): void => {
+    const t = inTextCitation(s, style)
+    if (inserter?.(t)) flash(`Inserted ${t}`)
+    else {
+      void window.api.clipboard.write(t, t)
+      flash(`Copied ${t}`)
+    }
+  }
+
+  const bibliography = buildBibliography(sources, style)
+
+  return (
+    <aside className="drawer">
+      <div className="drawer-head">
+        <h3>Sources</h3>
+        <button className="icon" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
+      </div>
+
+      <div className="src-section">
+        <label className="insp-label">Capture web page</label>
+        <div className="src-capture">
+          <input
+            value={url}
+            placeholder="https://…"
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && capture()}
+          />
+          <button className="primary" disabled={busy} onClick={capture}>
+            Capture
+          </button>
+        </div>
+        <button onClick={importFile}>Import file (PDF / image)…</button>
+        {msg && <p className="src-msg muted">{msg}</p>}
+      </div>
+
+      <div className="src-section">
+        <label className="insp-label">Add reference</label>
+        <div className="src-manual">
+          <select value={mkind} onChange={(e) => setMkind(e.target.value as SourceKind)}>
+            {MANUAL_TYPES.map((t) => (
+              <option key={t.kind} value={t.kind}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          {activeType.fields.map((f) => (
+            <input
+              key={f}
+              value={form[f]}
+              placeholder={f === 'locator' && mkind === 'transcript' ? 'Timestamp' : FIELD_LABEL[f]}
+              onChange={(e) => setField(f, e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addManual()}
+            />
+          ))}
+          <button className="primary" onClick={addManual}>
+            Add
+          </button>
+        </div>
+        <p className="src-msg muted">Fill what you know — leave the rest blank.</p>
+      </div>
+
+      {sources.length > 6 && (
+        <div className="src-filter drawer-pad">
+          <input
+            value={filter}
+            placeholder={`Filter ${sources.length} sources…`}
+            onChange={(e) => setFilter(e.target.value)}
+            aria-label="Filter sources"
+          />
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort sources">
+            <option value="recent">Recent</option>
+            <option value="title">Title</option>
+            <option value="author">Author</option>
+            <option value="year">Year</option>
+          </select>
+        </div>
+      )}
+
+      <ul className="src-list">
+        {sources.length === 0 && <li className="muted drawer-pad">No sources yet.</li>}
+        {visibleSources.length === 0 && sources.length > 0 && (
+          <li className="muted drawer-pad">No sources match “{filter}”.</li>
+        )}
+        {visibleSources.map((s) => (
+          <li key={s.id}>
+            <div className="src-item">
+              <span className={`src-kind src-kind-${s.kind}`}>{s.kind}</span>
+              <button className="src-title src-open" title="Open in Research viewer" onClick={() => viewSource(s.id)}>
+                {s.title}
+              </button>
+              <button
+                className="recent-remove"
+                title="Edit citation details"
+                onClick={() => setExpanded((id) => (id === s.id ? null : s.id))}
+              >
+                ✎
+              </button>
+              <button className="recent-remove" aria-label="Delete source" title="Delete" onClick={() => remove(s.id)}>
+                ×
+              </button>
+            </div>
+            {expanded === s.id && (
+              <div className="src-edit">
+                {EDIT_FIELDS.map(([field, label]) => (
+                  <label key={field} className="src-edit-field">
+                    <span>{label}</span>
+                    <input
+                      value={(s[field] as string) ?? ''}
+                      onChange={(e) => patchLocal(s.id, field, e.target.value)}
+                      onBlur={(e) => persist(s.id, field, e.target.value)}
+                    />
+                  </label>
+                ))}
+                <div className="src-edit-foot">
+                  <code className="src-intext">{inTextCitation(s, style)}</code>
+                  <button onClick={() => insertInText(s)} title="Insert at cursor (or copy)">
+                    Insert
+                  </button>
+                </div>
+              </div>
+            )}
+            {expanded !== s.id && s.url && <span className="src-sub">{s.url}</span>}
+          </li>
+        ))}
+      </ul>
+
+      <div className="src-section biblio">
+        <div className="biblio-head">
+          <label className="insp-label">Bibliography</label>
+          <select value={style} onChange={(e) => setStyle(e.target.value as CitationStyle)}>
+            {CITATION_STYLES.map((st) => (
+              <option key={st} value={st}>
+                {CITATION_STYLE_LABELS[st]}
+              </option>
+            ))}
+          </select>
+          <button disabled={!sources.length} onClick={insertBibliography} title="Insert at cursor">
+            Insert
+          </button>
+          <button className="primary" disabled={!sources.length} onClick={copyBibliography}>
+            Copy
+          </button>
+        </div>
+        {sources.length ? (
+          <div className="biblio-preview" dangerouslySetInnerHTML={{ __html: bibliography.html }} />
+        ) : (
+          <p className="muted">Add sources, fill in author/year/title, then copy a formatted list.</p>
+        )}
+        <p className="biblio-note muted">
+          Best-effort {CITATION_STYLE_LABELS[style]} — review entries before submitting.
+        </p>
+      </div>
+    </aside>
+  )
+}
