@@ -15,6 +15,9 @@ extraResources:
   # offline thesaurus data (generated at build time), read from resourcesPath
   - from: resources/thesaurus.txt
     to: thesaurus.txt
+  # third-party attribution notices must travel with the distributed app
+  - from: THIRD-PARTY-LICENSES.md
+    to: THIRD-PARTY-LICENSES.md
 win:
   target:
     - nsis
